@@ -1,0 +1,44 @@
+{
+  "name": "seatwise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SeatWise - 面向中国中小学班主任的智能排座位助手 MVP",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.561.0",
+    "next": "^15.5.9",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.22",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.0.10",
+    "jsdom": "^27.3.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  }
+}

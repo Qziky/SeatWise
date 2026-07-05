@@ -1,0 +1,53 @@
+# Tasks
+- [ ] Task 1: 确认项目技术基础与 Next.js 架构方案
+  - [ ] SubTask 1.1: 检查当前目录是否已有前端项目、包管理器和配置文件
+  - [ ] SubTask 1.2: 若为空项目，则初始化 Next.js 应用骨架
+  - [ ] SubTask 1.3: 确定 App Router、TypeScript、样式方案和基础目录结构
+- [ ] Task 2: 建立核心数据模型与本地状态方案
+  - [ ] SubTask 2.1: 定义班级、学生、座位、教室布局、排座规则和座位方案类型
+  - [ ] SubTask 2.2: 建立示例数据，覆盖身高、视力、性别、标签、备注和特殊需求
+  - [ ] SubTask 2.3: 实现本地状态与持久化策略，确保刷新后核心数据可保留
+- [ ] Task 3: 实现全平台应用外壳与首页
+  - [ ] SubTask 3.1: 创建响应式应用布局，适配桌面端、平板端和移动端
+  - [ ] SubTask 3.2: 实现首页价值介绍、核心流程入口和快速开始路径
+  - [ ] SubTask 3.3: 建立主要导航，包括班级、学生、布局、规则、生成、历史和导出入口
+- [ ] Task 4: 实现班级与学生档案 MVP
+  - [ ] SubTask 4.1: 实现班级创建与当前班级概览
+  - [ ] SubTask 4.2: 实现学生列表、学生编辑表单、批量编辑入口和基础字段校验
+  - [ ] SubTask 4.3: 实现复制粘贴导入学生名单的解析与确认流程
+- [ ] Task 5: 实现教室布局编辑 MVP
+  - [ ] SubTask 5.1: 实现行列式座位网格生成
+  - [ ] SubTask 5.2: 支持设置行数、列数、空座和讲台方向
+  - [ ] SubTask 5.3: 支持标记靠窗、靠门、反光、后排、边缘等座位属性
+- [ ] Task 6: 实现排座规则配置 MVP
+  - [ ] SubTask 6.1: 实现视力优先、身高遮挡、男女搭配、公平轮换和避免同桌规则开关
+  - [ ] SubTask 6.2: 实现规则模板选择，包括视力优先、公平轮换、纪律稳定、学习互助和考试随机
+  - [ ] SubTask 6.3: 实现学生关系规则配置，用于不能同桌和尽量分开
+- [ ] Task 7: 实现座位生成与多方案对比
+  - [ ] SubTask 7.1: 实现基础座位生成算法，优先满足硬性规则并尽量满足软性规则
+  - [ ] SubTask 7.2: 一次生成至少 3 个候选方案
+  - [ ] SubTask 7.3: 为每个候选方案展示视力照顾、身高遮挡、公平轮换、纪律风险和小组均衡评分
+  - [ ] SubTask 7.4: 展示未满足规则和冲突原因
+- [ ] Task 8: 实现手动微调、锁定与规则复检
+  - [ ] SubTask 8.1: 实现座位表中的学生移动或交换
+  - [ ] SubTask 8.2: 实现学生锁定、座位锁定和重新生成未锁定座位
+  - [ ] SubTask 8.3: 微调后重新检查规则冲突并更新提示
+- [ ] Task 9: 实现查看、导出入口与历史记录 MVP
+  - [ ] SubTask 9.1: 实现教师版、学生版和打印版视图切换
+  - [ ] SubTask 9.2: 实现导出 PDF、图片、Excel 的入口或可替换接口
+  - [ ] SubTask 9.3: 实现座位表版本保存、历史列表和轮换风险提示
+- [ ] Task 10: 完成质量验证与交付检查
+  - [ ] SubTask 10.1: 运行项目类型检查、Lint 或构建命令
+  - [ ] SubTask 10.2: 验证桌面端、平板端和移动端主要页面布局
+  - [ ] SubTask 10.3: 按 checklist.md 逐项检查功能是否符合规格
+
+# Task Dependencies
+- Task 2 depends on Task 1
+- Task 3 depends on Task 1
+- Task 4 depends on Task 2 and Task 3
+- Task 5 depends on Task 2 and Task 3
+- Task 6 depends on Task 2 and Task 3
+- Task 7 depends on Task 4, Task 5 and Task 6
+- Task 8 depends on Task 7
+- Task 9 depends on Task 7 and Task 8
+- Task 10 depends on Task 3 through Task 9
