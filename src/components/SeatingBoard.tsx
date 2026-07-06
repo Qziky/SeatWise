@@ -20,13 +20,17 @@ const visionAccentClass: Record<VisionStatus, string> = {
 
 interface LegendItem {
   className: string;
+  description?: string;
   label: string;
+  legendLabel?: string;
   shortLabel: string;
 }
 
 interface BorderLegendItem {
   className: string;
+  description?: string;
   label: string;
+  legendLabel?: string;
   shortLabel: string;
 }
 
@@ -45,38 +49,36 @@ const visionStatusShortLabels: Record<VisionStatus, string> = {
 };
 
 const visionLegendItems: LegendItem[] = [
-  { label: "视力正常", shortLabel: "正", className: visionStatusMarkerClass.normal },
-  { label: "轻度关注", shortLabel: "轻", className: visionStatusMarkerClass.mild },
-  { label: "重点照顾", shortLabel: "重", className: visionStatusMarkerClass.severe },
-  { label: "视力未填", shortLabel: "未", className: visionStatusMarkerClass.unknown }
+  { label: "视力正常", legendLabel: "正常视力", description: "绿色，普通安排", shortLabel: "正", className: visionStatusMarkerClass.normal },
+  { label: "轻度关注", legendLabel: "轻度视力", description: "黄色，尽量靠前", shortLabel: "轻", className: visionStatusMarkerClass.mild },
+  { label: "重点照顾", legendLabel: "重点视力", description: "红色，优先靠前", shortLabel: "重", className: visionStatusMarkerClass.severe },
+  { label: "视力未填", legendLabel: "视力未填", description: "灰色，资料待补", shortLabel: "未", className: visionStatusMarkerClass.unknown }
 ];
 
 const heightLegendItems: LegendItem[] = [
-  { label: "偏高", shortLabel: "高", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
-  { label: "偏矮", shortLabel: "矮", className: "border-fern/45 bg-fern/10 text-fern" },
-  { label: "常规身高", shortLabel: "常", className: "border-ink/20 bg-ink/[0.04] text-ink/45" }
+  { label: "偏高", legendLabel: "身高偏高", description: "蓝色，高个尽量不挡后排", shortLabel: "高", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
+  { label: "偏矮", legendLabel: "身高偏矮", description: "绿色，矮个优先靠前", shortLabel: "矮", className: "border-fern/45 bg-fern/10 text-fern" }
 ];
 
 const noteLegendItems: LegendItem[] = [
-  { label: "标签", shortLabel: "标", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
-  { label: "多标签", shortLabel: "多", className: "border-violet-500/45 bg-violet-500/10 text-violet-700" },
-  { label: "特殊需求", shortLabel: "特", className: "border-coral/45 bg-coral/10 text-coral" },
-  { label: "已锁定", shortLabel: "锁", className: "border-coral/45 bg-coral/10 text-coral" }
+  { label: "标签", legendLabel: "有标签", description: "蓝色，学生有一个标签", shortLabel: "标", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
+  { label: "多标签", legendLabel: "多个标签", description: "紫色，学生有多个标签", shortLabel: "多", className: "border-violet-500/45 bg-violet-500/10 text-violet-700" },
+  { label: "特殊需求", legendLabel: "特殊需求", description: "红色，需要教师复核", shortLabel: "特", className: "border-coral/45 bg-coral/10 text-coral" }
 ];
 
 const seatBorderLegendItems: BorderLegendItem[] = [
-  { label: "蓝上边=靠窗", shortLabel: "窗", className: "border-t-2 border-t-sky-500/45 border-x-ink/10 border-b-ink/10 bg-sky-500/[0.04]" },
-  { label: "紫右边=靠门", shortLabel: "门", className: "border-r-2 border-r-violet-500/45 border-y-ink/10 border-l-ink/10 bg-violet-500/[0.04]" },
-  { label: "黄边=反光", shortLabel: "光", className: "border-marigold bg-marigold/5" },
-  { label: "绿边=边缘", shortLabel: "边", className: "border-fern/55 bg-fern/[0.04]" },
-  { label: "灰下边=后排", shortLabel: "后", className: "border-b-2 border-b-ink/25 border-x-ink/10 border-t-ink/10 bg-ink/[0.02]" }
+  { label: "靠窗", legendLabel: "靠窗", description: "上蓝线", shortLabel: "窗", className: "border-t-2 border-t-sky-500/45 border-x-ink/10 border-b-ink/10 bg-sky-500/[0.04]" },
+  { label: "靠门", legendLabel: "靠门", description: "右紫线", shortLabel: "门", className: "border-r-2 border-r-violet-500/45 border-y-ink/10 border-l-ink/10 bg-violet-500/[0.04]" },
+  { label: "反光", legendLabel: "反光", description: "黄色边", shortLabel: "光", className: "border-marigold bg-marigold/5" },
+  { label: "边缘", legendLabel: "边缘", description: "绿色边", shortLabel: "边", className: "border-fern/55 bg-fern/[0.04]" },
+  { label: "后排", legendLabel: "后排", description: "下灰线", shortLabel: "后", className: "border-b-2 border-b-ink/25 border-x-ink/10 border-t-ink/10 bg-ink/[0.02]" }
 ];
 
 const teacherBorderLegendItems: BorderLegendItem[] = [
-  { label: "左绿=视力正常", shortLabel: "正", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
-  { label: "左黄=轻度关注", shortLabel: "轻", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
-  { label: "左红=重点照顾", shortLabel: "重", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
-  { label: "红框=锁定", shortLabel: "锁", className: "border-coral/55 bg-coral/5" }
+  { label: "正常视力", legendLabel: "正常", description: "左绿线", shortLabel: "正", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
+  { label: "轻度关注", legendLabel: "轻度", description: "左黄线", shortLabel: "轻", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
+  { label: "重点照顾", legendLabel: "重点", description: "左红线", shortLabel: "重", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
+  { label: "锁定座位或学生", legendLabel: "锁定", description: "红边框", shortLabel: "锁", className: "border-coral/55 bg-coral/5" }
 ];
 
 interface DetailState {
@@ -674,35 +676,33 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
 
   return (
     <div
-      className="mb-1.5 flex items-center gap-2 overflow-x-auto rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[9px] font-semibold leading-none text-ink/60 no-print"
+      className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 overflow-x-auto rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[10px] font-semibold leading-none text-ink/65 no-print"
       style={{ minWidth }}
-      aria-label="座位图标图例"
+      aria-label="座位标记图例"
     >
-      <BorderLegendGroup title="座位边框" items={seatBorderLegendItems} />
+      <BorderLegendGroup title="座位环境" helper="格子边缘颜色代表座位环境" items={seatBorderLegendItems} />
       {mode === "teacher" ? (
         <>
-          <LegendGroup title="视力条" items={visionLegendItems} />
-          <LegendGroup title="身高点" items={heightLegendItems} />
-          <LegendGroup title="标记点" items={noteLegendItems} />
-          <BorderLegendGroup title="教师边框" items={teacherBorderLegendItems} />
+          <LegendGroup title="学生状态" helper="格子底部小字代表学生状态" items={[...visionLegendItems.slice(1), ...heightLegendItems, ...noteLegendItems]} />
+          <BorderLegendGroup title="教师视力线" helper="教师视图左侧彩线代表视力程度" items={teacherBorderLegendItems} />
         </>
       ) : null}
     </div>
   );
 }
 
-function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
+function LegendGroup({ title, helper, items }: { title: string; helper: string; items: LegendItem[] }) {
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <span className="text-ink/40">{title}</span>
+    <div className="flex shrink-0 items-center gap-1" title={helper}>
+      <span className="whitespace-nowrap text-ink/45">{title}</span>
       {items.map((item) => (
         <span
           key={item.label}
-          className="flex items-center gap-0.5 whitespace-nowrap rounded-[4px] bg-white/55 px-1 py-0.5"
-          title={item.label}
+          className="flex items-center gap-1 whitespace-nowrap rounded-[4px] bg-white/65 px-1.5 py-0.5"
+          title={item.description ? `${item.label}：${item.description}` : item.label}
         >
           <LegendSwatch item={item} />
-          {item.shortLabel}
+          <span className="text-ink/70">{item.legendLabel ?? item.label}</span>
         </span>
       ))}
     </div>
@@ -713,18 +713,19 @@ function LegendSwatch({ item }: { item: LegendItem }) {
   return <MiniTextBadge className={item.className} label={item.label} shortLabel={item.shortLabel} />;
 }
 
-function BorderLegendGroup({ title, items }: { title: string; items: BorderLegendItem[] }) {
+function BorderLegendGroup({ title, helper, items }: { title: string; helper: string; items: BorderLegendItem[] }) {
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <span className="text-ink/40">{title}</span>
+    <div className="flex shrink-0 items-center gap-1" title={helper}>
+      <span className="whitespace-nowrap text-ink/45">{title}</span>
       {items.map((item) => (
         <span
           key={item.label}
-          className="flex items-center gap-0.5 whitespace-nowrap rounded-[4px] bg-white/55 px-1 py-0.5"
-          title={item.label}
+          className="flex items-center gap-1 whitespace-nowrap rounded-[4px] bg-white/65 px-1.5 py-0.5"
+          title={item.description ? `${item.label}：${item.description}` : item.label}
         >
-          <span className={cn("h-3 w-4 shrink-0 rounded-[3px] border-2", item.className)} />
-          {item.shortLabel}
+          <span className={cn("h-3.5 w-5 shrink-0 rounded-[3px] border-2", item.className)} />
+          <span className="text-ink/70">{item.legendLabel ?? item.label}</span>
+          {item.description ? <span className="text-[9px] text-ink/38">{item.description}</span> : null}
         </span>
       ))}
     </div>
