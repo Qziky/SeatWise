@@ -1,7 +1,7 @@
 "use client";
 
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Lock, Unlock, X } from "lucide-react";
 import { useState } from "react";
@@ -77,6 +77,12 @@ interface DetailState {
   top: number;
 }
 
+interface DragState {
+  overSeatId: string;
+  sourceSeatId: string;
+  studentId: string;
+}
+
 function heightDotClass(heightCm: number) {
   if (heightCm >= 165) return "bg-sky-500";
   if (heightCm <= 150) return "bg-fern";
@@ -131,11 +137,19 @@ export function SeatingBoard({
     isTeacherMode ? 604 : 560
   );
   const [detail, setDetail] = useState<DetailState | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [previewAssignments, setPreviewAssignments] = useState<Record<string, string | null> | null>(null);
+  const visibleAssignments = previewAssignments ?? plan?.assignments ?? {};
   const selectedSeat = detail ? classroom.layout.seats.find((seat) => seat.id === detail.seatId) ?? null : null;
-  const selectedStudentId = selectedSeat ? plan?.assignments[selectedSeat.id] ?? null : null;
+  const selectedStudentId = selectedSeat ? visibleAssignments[selectedSeat.id] ?? null : null;
   const selectedStudent = selectedStudentId ? studentsById.get(selectedStudentId) ?? null : null;
   const selectedSeatLocked = Boolean(selectedSeat && plan?.lockedSeatIds.includes(selectedSeat.id));
   const selectedStudentLocked = Boolean(selectedStudent && plan?.lockedStudentIds.includes(selectedStudent.id));
+  const activeDragSeat = dragState
+    ? classroom.layout.seats.find((seat) => seat.id === dragState.sourceSeatId) ?? null
+    : null;
+  const activeDragStudent = dragState ? studentsById.get(dragState.studentId) ?? null : null;
+  const activeDragStudentLocked = Boolean(activeDragStudent && plan?.lockedStudentIds.includes(activeDragStudent.id));
 
   function openDetailFromElement(element: HTMLElement, seatId: string) {
     if (mode === "print") return;
@@ -147,10 +161,45 @@ export function SeatingBoard({
     setDetail({ seatId, left, top });
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    if (!plan) return;
+    const studentId = String(event.active.id);
+    const sourceSeatId = Object.entries(plan.assignments).find(([, value]) => value === studentId)?.[0];
+    if (!sourceSeatId) return;
+
+    setDetail(null);
+    setDragState({ overSeatId: sourceSeatId, sourceSeatId, studentId });
+    setPreviewAssignments(createDragPreviewAssignments(plan.assignments, studentId, sourceSeatId, sourceSeatId));
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    if (!dragState || !plan) return;
+    const overSeatId = event.over?.id ? String(event.over.id) : null;
+    if (!overSeatId || overSeatId === dragState.overSeatId || !canPreviewDrop(overSeatId)) return;
+
+    setDragState({ ...dragState, overSeatId });
+    setPreviewAssignments(createDragPreviewAssignments(plan.assignments, dragState.studentId, dragState.sourceSeatId, overSeatId));
+  }
+
+  function canPreviewDrop(seatId: string) {
+    if (!plan) return false;
+    if (plan.lockedSeatIds.includes(seatId)) return false;
+    const targetSeat = classroom.layout.seats.find((seat) => seat.id === seatId);
+    if (!targetSeat || targetSeat.attributes.includes("empty")) return false;
+    const targetStudentId = plan.assignments[seatId];
+    return !targetStudentId || !plan.lockedStudentIds.includes(targetStudentId);
+  }
+
+  function resetDragPreview() {
+    setDragState(null);
+    setPreviewAssignments(null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const studentId = String(event.active.id);
     const seatId = event.over?.id ? String(event.over.id) : null;
-    if (!seatId || !onMoveStudent) return;
+    resetDragPreview();
+    if (!seatId || !onMoveStudent || !canPreviewDrop(seatId)) return;
     onMoveStudent(studentId, seatId);
   }
 
@@ -169,7 +218,7 @@ export function SeatingBoard({
         }}
       >
         {classroom.layout.seats.map((seat) => {
-          const studentId = plan?.assignments[seat.id] ?? null;
+          const studentId = visibleAssignments[seat.id] ?? null;
           const student = studentId ? studentsById.get(studentId) ?? null : null;
           const seatLocked = Boolean(plan?.lockedSeatIds.includes(seat.id));
           const studentLocked = Boolean(student && plan?.lockedStudentIds.includes(student.id));
@@ -194,40 +243,15 @@ export function SeatingBoard({
               selected={detail?.seatId === seat.id}
               onOpenDetail={(element) => openDetailFromElement(element, seat.id)}
             >
-              <div
-                className={cn(
-                  "flex flex-col justify-between",
-                  isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5",
-                  markerAttributes.length && "pb-1.5"
-                )}
-                title={mode === "teacher" ? getSeatAttributeTitle(seat.attributes) : undefined}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-semibold leading-none text-ink/45">
-                    {seat.row}-{seat.column}
-                  </span>
-                  {mode === "teacher" && (seatLocked || studentLocked) ? (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-coral"
-                      title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
-                    />
-                  ) : null}
-                </div>
-
-                {student ? (
-                  <DraggableStudent
-                    student={student}
-                    mode={mode}
-                    locked={studentLocked}
-                  />
-                ) : (
-                  <div className="flex flex-1 items-center justify-center text-[11px] font-semibold text-ink/35">
-                    {seat.attributes.includes("empty") ? "空座" : "待安排"}
-                  </div>
-                )}
-
-                {mode === "teacher" ? <SeatAttributeMarkers attributes={markerAttributes} /> : null}
-              </div>
+              <SeatCardContent
+                isTeacherMode={isTeacherMode}
+                markerAttributes={markerAttributes}
+                mode={mode}
+                seat={seat}
+                seatLocked={seatLocked}
+                student={student}
+                studentLocked={studentLocked}
+              />
             </SeatDropCell>
           );
         })}
@@ -253,8 +277,24 @@ export function SeatingBoard({
   if (readonly || mode === "print") return board;
 
   return (
-    <DndContext sensors={sensors} onDragStart={() => setDetail(null)} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragCancel={resetDragPreview}
+      onDragEnd={handleDragEnd}
+    >
       {board}
+      <DragOverlay dropAnimation={null}>
+        {activeDragSeat && activeDragStudent ? (
+          <SeatDragOverlayCard
+            seat={activeDragSeat}
+            student={activeDragStudent}
+            mode={mode}
+            studentLocked={activeDragStudentLocked}
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -345,6 +385,121 @@ function SeatDropCell({
     >
       {!empty ? <SeatCellPatterns attributes={attributes} /> : null}
       <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function createDragPreviewAssignments(
+  assignments: Record<string, string | null>,
+  studentId: string,
+  sourceSeatId: string,
+  targetSeatId: string
+) {
+  const next = { ...assignments };
+  const targetStudentId = targetSeatId === sourceSeatId ? null : next[targetSeatId] ?? null;
+
+  Object.entries(next).forEach(([seatId, assignedStudentId]) => {
+    if (assignedStudentId === studentId) {
+      next[seatId] = null;
+    }
+  });
+
+  next[sourceSeatId] = targetStudentId === studentId ? null : targetStudentId;
+  if (targetSeatId !== sourceSeatId) {
+    next[targetSeatId] = null;
+  }
+
+  return next;
+}
+
+function SeatCardContent({
+  isTeacherMode,
+  markerAttributes,
+  mode,
+  seat,
+  seatLocked,
+  student,
+  studentLocked
+}: {
+  isTeacherMode: boolean;
+  markerAttributes: SeatAttributeDot[];
+  mode: ViewMode;
+  seat: SeatCell;
+  seatLocked: boolean;
+  student: Student | null;
+  studentLocked: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col justify-between",
+        isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5",
+        markerAttributes.length && "pb-1.5"
+      )}
+      title={mode === "teacher" ? getSeatAttributeTitle(seat.attributes) : undefined}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[10px] font-semibold leading-none text-ink/45">
+          {seat.row}-{seat.column}
+        </span>
+        {mode === "teacher" && (seatLocked || studentLocked) ? (
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-coral"
+            title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
+          />
+        ) : null}
+      </div>
+
+      {student ? (
+        <DraggableStudent student={student} mode={mode} locked={studentLocked} />
+      ) : (
+        <div className="flex flex-1 items-center justify-center text-[11px] font-semibold text-ink/35">
+          {seat.attributes.includes("empty") ? "空座" : "待安排"}
+        </div>
+      )}
+
+      {mode === "teacher" ? <SeatAttributeMarkers attributes={markerAttributes} /> : null}
+    </div>
+  );
+}
+
+function SeatDragOverlayCard({
+  mode,
+  seat,
+  student,
+  studentLocked
+}: {
+  mode: ViewMode;
+  seat: SeatCell;
+  student: Student;
+  studentLocked: boolean;
+}) {
+  const isTeacherMode = mode === "teacher";
+  const markerAttributes = seat.attributes.filter(
+    (attribute): attribute is SeatAttributeDot => attribute !== "empty" && attribute !== "edge"
+  );
+
+  return (
+    <div
+      className={cn(
+        "relative w-[86px] cursor-grabbing rounded-[7px] border border-fern/45 bg-paper p-1.5 opacity-95 shadow-soft ring-2 ring-fern/35",
+        mode === "teacher" ? "min-h-[104px]" : "min-h-[98px]",
+        mode === "teacher" && "border-l-4",
+        mode === "teacher" && visionAccentClass[student.vision]
+      )}
+    >
+      <SeatCellPatterns attributes={seat.attributes} />
+      <div className="relative z-10">
+        <SeatCardContent
+          isTeacherMode={isTeacherMode}
+          markerAttributes={markerAttributes}
+          mode={mode}
+          seat={seat}
+          seatLocked={false}
+          student={student}
+          studentLocked={studentLocked}
+        />
+      </div>
     </div>
   );
 }
