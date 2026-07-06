@@ -3,7 +3,27 @@
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Lock, Unlock, X } from "lucide-react";
+import {
+  CircleAlert,
+  CornerDownRight,
+  DoorOpen,
+  Eye,
+  EyeOff,
+  HeartPulse,
+  Lock,
+  Minus,
+  PanelLeft,
+  Rows3,
+  ScanEye,
+  Sun,
+  Tag,
+  Tags,
+  TrendingDown,
+  TrendingUp,
+  Unlock,
+  X
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
@@ -11,13 +31,14 @@ import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
 import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
 import { seatAttributeLabels, visionLabels } from "@/lib/types";
 
-type SeatAttributeDot = Exclude<SeatAttribute, "empty" | "edge">;
+type SeatAttributeMarker = Exclude<SeatAttribute, "empty">;
 
-const seatAttributeDotClass: Record<SeatAttributeDot, string> = {
-  window: "bg-sky-500",
-  door: "bg-violet-500",
-  glare: "bg-marigold",
-  back: "bg-ink/45"
+const seatAttributeIcons: Record<SeatAttributeMarker, LucideIcon> = {
+  window: PanelLeft,
+  door: DoorOpen,
+  glare: Sun,
+  back: Rows3,
+  edge: CornerDownRight
 };
 
 const visionAccentClass: Record<VisionStatus, string> = {
@@ -27,48 +48,44 @@ const visionAccentClass: Record<VisionStatus, string> = {
   unknown: "border-l-ink/20 bg-white"
 };
 
-const visionDotClass: Record<VisionStatus, string> = {
-  normal: "bg-fern",
-  mild: "bg-marigold",
-  severe: "bg-coral",
-  unknown: "bg-ink/30"
+const visionStatusIcons: Record<VisionStatus, LucideIcon> = {
+  normal: Eye,
+  mild: ScanEye,
+  severe: CircleAlert,
+  unknown: EyeOff
 };
 
-const tagDotClass = ["bg-coral/80", "bg-sky-500", "bg-violet-500"];
-
 interface LegendItem {
-  className: string;
+  icon: LucideIcon;
   label: string;
-  shape: "dot" | "line" | "cell" | "stripe";
 }
 
 const seatLegendItems: LegendItem[] = [
-  { label: "靠窗", shape: "line", className: "bg-sky-500/55" },
-  { label: "靠门", shape: "line", className: "bg-violet-500/55" },
-  { label: "反光", shape: "stripe", className: "" },
-  { label: "后排", shape: "line", className: "bg-ink/35" },
-  { label: "边缘", shape: "cell", className: "border-fern/45 bg-fern/[0.04]" }
+  { label: "靠窗", icon: PanelLeft },
+  { label: "靠门", icon: DoorOpen },
+  { label: "反光", icon: Sun },
+  { label: "后排", icon: Rows3 },
+  { label: "边缘", icon: CornerDownRight }
 ];
 
 const visionLegendItems: LegendItem[] = [
-  { label: "视力正常", shape: "line", className: visionDotClass.normal },
-  { label: "轻度关注", shape: "line", className: visionDotClass.mild },
-  { label: "重点照顾", shape: "line", className: visionDotClass.severe },
-  { label: "视力未填", shape: "line", className: visionDotClass.unknown }
+  { label: "视力正常", icon: visionStatusIcons.normal },
+  { label: "轻度关注", icon: visionStatusIcons.mild },
+  { label: "重点照顾", icon: visionStatusIcons.severe },
+  { label: "视力未填", icon: visionStatusIcons.unknown }
 ];
 
 const heightLegendItems: LegendItem[] = [
-  { label: "偏高", shape: "dot", className: "bg-sky-500" },
-  { label: "偏矮", shape: "dot", className: "bg-fern" },
-  { label: "常规身高", shape: "dot", className: "bg-ink/25" }
+  { label: "偏高", icon: TrendingUp },
+  { label: "偏矮", icon: TrendingDown },
+  { label: "常规身高", icon: Minus }
 ];
 
 const noteLegendItems: LegendItem[] = [
-  { label: "标签1", shape: "dot", className: tagDotClass[0] },
-  { label: "标签2", shape: "dot", className: tagDotClass[1] },
-  { label: "标签3", shape: "dot", className: tagDotClass[2] },
-  { label: "特殊需求", shape: "dot", className: "bg-ink/55" },
-  { label: "已锁定", shape: "dot", className: "bg-coral" }
+  { label: "标签", icon: Tag },
+  { label: "多标签", icon: Tags },
+  { label: "特殊需求", icon: HeartPulse },
+  { label: "已锁定", icon: Lock }
 ];
 
 interface DetailState {
@@ -83,10 +100,10 @@ interface DragState {
   studentId: string;
 }
 
-function heightDotClass(heightCm: number) {
-  if (heightCm >= 165) return "bg-sky-500";
-  if (heightCm <= 150) return "bg-fern";
-  return "bg-ink/25";
+function HeightIcon({ heightCm }: { heightCm: number }) {
+  if (heightCm >= 165) return <TrendingUp className="h-3 w-3" />;
+  if (heightCm <= 150) return <TrendingDown className="h-3 w-3" />;
+  return <Minus className="h-3 w-3" />;
 }
 
 function getSeatAttributeTitle(attributes: SeatAttribute[]) {
@@ -225,9 +242,7 @@ export function SeatingBoard({
           const visibleAttributes = seat.attributes.filter(
             (attribute): attribute is Exclude<SeatAttribute, "empty"> => attribute !== "empty"
           );
-          const markerAttributes = visibleAttributes.filter(
-            (attribute): attribute is SeatAttributeDot => attribute !== "edge"
-          );
+          const markerAttributes = visibleAttributes;
 
           return (
             <SeatDropCell
@@ -422,7 +437,7 @@ function SeatCardContent({
   studentLocked
 }: {
   isTeacherMode: boolean;
-  markerAttributes: SeatAttributeDot[];
+  markerAttributes: SeatAttributeMarker[];
   mode: ViewMode;
   seat: SeatCell;
   seatLocked: boolean;
@@ -444,9 +459,10 @@ function SeatCardContent({
         </span>
         {mode === "teacher" && (seatLocked || studentLocked) ? (
           <span
-            className="h-1.5 w-1.5 rounded-full bg-coral"
             title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
-          />
+          >
+            <Lock className="h-3 w-3 text-ink/55" />
+          </span>
         ) : null}
       </div>
 
@@ -476,7 +492,7 @@ function SeatDragOverlayCard({
 }) {
   const isTeacherMode = mode === "teacher";
   const markerAttributes = seat.attributes.filter(
-    (attribute): attribute is SeatAttributeDot => attribute !== "empty" && attribute !== "edge"
+    (attribute): attribute is SeatAttributeMarker => attribute !== "empty"
   );
 
   return (
@@ -517,19 +533,25 @@ function SeatCellPatterns({ attributes }: { attributes: SeatAttribute[] }) {
   );
 }
 
-function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeDot[] }) {
+function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeMarker[] }) {
   if (!attributes.length) return <div className="min-h-3" />;
 
   return (
-    <div className="flex min-h-3 items-center gap-0.5" aria-hidden="true">
+    <div className="flex min-h-3 items-center gap-0.5 text-ink/55" aria-hidden="true">
       {attributes.slice(0, 4).map((attribute) => (
-        <span
-          key={attribute}
-          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", seatAttributeDotClass[attribute])}
-          title={seatAttributeLabels[attribute]}
-        />
+        <SeatAttributeIcon key={attribute} attribute={attribute} />
       ))}
     </div>
+  );
+}
+
+function SeatAttributeIcon({ attribute }: { attribute: SeatAttributeMarker }) {
+  const Icon = seatAttributeIcons[attribute];
+
+  return (
+    <span title={seatAttributeLabels[attribute]}>
+      <Icon className="h-3 w-3 shrink-0" />
+    </span>
   );
 }
 
@@ -672,7 +694,7 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
     <div
       className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[10px] font-semibold leading-none text-ink/60 no-print"
       style={{ minWidth }}
-      aria-label="座位颜色图例"
+      aria-label="座位图标图例"
     >
       <LegendGroup title="座位" items={seatLegendItems} />
       {mode === "teacher" ? (
@@ -701,32 +723,38 @@ function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
 }
 
 function LegendSwatch({ item }: { item: LegendItem }) {
-  if (item.shape === "stripe") {
-    return (
-      <span className="h-2.5 w-3.5 shrink-0 rounded-[3px] border border-marigold/25 bg-[repeating-linear-gradient(135deg,rgba(222,145,43,0.22)_0,rgba(222,145,43,0.22)_2px,transparent_2px,transparent_5px)]" />
-    );
-  }
+  const Icon = item.icon;
 
-  if (item.shape === "cell") {
-    return <span className={cn("h-2.5 w-3.5 shrink-0 rounded-[3px] border", item.className)} />;
-  }
-
-  if (item.shape === "line") {
-    return <span className={cn("h-1.5 w-3.5 shrink-0 rounded-full", item.className)} />;
-  }
-
-  return <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.className)} />;
+  return <Icon className="h-3 w-3 shrink-0 text-ink/55" />;
 }
 
 function StudentStatusMarkers({ student }: { student: Student }) {
+  const VisionIcon = visionStatusIcons[student.vision];
+  const visibleTags = student.tags.slice(0, 2);
+
   return (
-    <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5" aria-hidden="true">
-      <span className={cn("h-1.5 w-4 shrink-0 rounded-full", visionDotClass[student.vision])} title={visionLabels[student.vision]} />
-      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", heightDotClass(student.heightCm))} title={`${student.heightCm}cm`} />
-      {student.tags.slice(0, 2).map((tag, index) => (
-        <span key={tag} className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tagDotClass[index])} title={tag} />
-      ))}
-      {student.specialNeeds ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink/55" title={student.specialNeeds} /> : null}
+    <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5 text-ink/55" aria-hidden="true">
+      <span title={visionLabels[student.vision]}>
+        <VisionIcon className="h-3 w-3 shrink-0" />
+      </span>
+      <span className="flex h-3 w-3 shrink-0 items-center justify-center" title={`${student.heightCm}cm`}>
+        <HeightIcon heightCm={student.heightCm} />
+      </span>
+      {visibleTags.length === 1 ? (
+        <span title={visibleTags[0]}>
+          <Tag className="h-3 w-3 shrink-0" />
+        </span>
+      ) : null}
+      {visibleTags.length > 1 ? (
+        <span title={visibleTags.join("、")}>
+          <Tags className="h-3 w-3 shrink-0" />
+        </span>
+      ) : null}
+      {student.specialNeeds ? (
+        <span title={student.specialNeeds}>
+          <HeartPulse className="h-3 w-3 shrink-0" />
+        </span>
+      ) : null}
     </div>
   );
 }
