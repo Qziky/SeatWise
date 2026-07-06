@@ -36,6 +36,41 @@ const visionDotClass: Record<VisionStatus, string> = {
 
 const tagDotClass = ["bg-coral/80", "bg-sky-500", "bg-violet-500"];
 
+interface LegendItem {
+  className: string;
+  label: string;
+  shape: "dot" | "line" | "cell" | "stripe";
+}
+
+const seatLegendItems: LegendItem[] = [
+  { label: "靠窗", shape: "line", className: "bg-sky-500/55" },
+  { label: "靠门", shape: "line", className: "bg-violet-500/55" },
+  { label: "反光", shape: "stripe", className: "" },
+  { label: "后排", shape: "line", className: "bg-ink/35" },
+  { label: "边缘", shape: "cell", className: "border-fern/45 bg-fern/[0.04]" }
+];
+
+const visionLegendItems: LegendItem[] = [
+  { label: "视力正常", shape: "line", className: visionDotClass.normal },
+  { label: "轻度关注", shape: "line", className: visionDotClass.mild },
+  { label: "重点照顾", shape: "line", className: visionDotClass.severe },
+  { label: "视力未填", shape: "line", className: visionDotClass.unknown }
+];
+
+const heightLegendItems: LegendItem[] = [
+  { label: "偏高", shape: "dot", className: "bg-sky-500" },
+  { label: "偏矮", shape: "dot", className: "bg-fern" },
+  { label: "常规身高", shape: "dot", className: "bg-ink/25" }
+];
+
+const noteLegendItems: LegendItem[] = [
+  { label: "标签1", shape: "dot", className: tagDotClass[0] },
+  { label: "标签2", shape: "dot", className: tagDotClass[1] },
+  { label: "标签3", shape: "dot", className: tagDotClass[2] },
+  { label: "特殊需求", shape: "dot", className: "bg-ink/55" },
+  { label: "已锁定", shape: "dot", className: "bg-coral" }
+];
+
 interface DetailState {
   left: number;
   seatId: string;
@@ -121,6 +156,7 @@ export function SeatingBoard({
 
   const board = (
     <div className="w-full max-w-full overflow-x-auto pb-1" data-testid="seating-board-scroll">
+      <SeatingLegend mode={mode} minWidth={boardMinWidth} />
       <div
         className={cn(
           "grid rounded-[8px] border border-ink/10 bg-white shadow-sm print-surface",
@@ -465,6 +501,59 @@ function SeatDetailBubble({
       ) : null}
     </div>
   );
+}
+
+function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number }) {
+  if (mode === "print") return null;
+
+  return (
+    <div
+      className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[10px] font-semibold leading-none text-ink/60 no-print"
+      style={{ minWidth }}
+      aria-label="座位颜色图例"
+    >
+      <LegendGroup title="座位" items={seatLegendItems} />
+      {mode === "teacher" ? (
+        <>
+          <LegendGroup title="视力条" items={visionLegendItems} />
+          <LegendGroup title="身高点" items={heightLegendItems} />
+          <LegendGroup title="标记点" items={noteLegendItems} />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-ink/40">{title}</span>
+      {items.map((item) => (
+        <span key={item.label} className="flex items-center gap-0.5 whitespace-nowrap" title={item.label}>
+          <LegendSwatch item={item} />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function LegendSwatch({ item }: { item: LegendItem }) {
+  if (item.shape === "stripe") {
+    return (
+      <span className="h-2.5 w-3.5 shrink-0 rounded-[3px] border border-marigold/25 bg-[repeating-linear-gradient(135deg,rgba(222,145,43,0.22)_0,rgba(222,145,43,0.22)_2px,transparent_2px,transparent_5px)]" />
+    );
+  }
+
+  if (item.shape === "cell") {
+    return <span className={cn("h-2.5 w-3.5 shrink-0 rounded-[3px] border", item.className)} />;
+  }
+
+  if (item.shape === "line") {
+    return <span className={cn("h-1.5 w-3.5 shrink-0 rounded-full", item.className)} />;
+  }
+
+  return <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.className)} />;
 }
 
 function StudentStatusMarkers({ student }: { student: Student }) {
