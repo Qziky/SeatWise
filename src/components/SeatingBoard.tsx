@@ -3,7 +3,9 @@
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, X } from "lucide-react";
+import { useState } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { cn } from "@/lib/cn";
 import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
 import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
@@ -32,6 +34,12 @@ const visionDotClass: Record<VisionStatus, string> = {
 };
 
 const tagDotClass = ["bg-coral/80", "bg-sky-500", "bg-violet-500"];
+
+interface DetailState {
+  left: number;
+  seatId: string;
+  top: number;
+}
 
 function heightDotClass(heightCm: number) {
   if (heightCm >= 165) return "bg-sky-500";
@@ -86,6 +94,20 @@ export function SeatingBoard({
     classroom.layout.columns * columnMinWidth + (classroom.layout.columns - 1) * gridGap + boardPadding,
     isTeacherMode ? 604 : 560
   );
+  const [detail, setDetail] = useState<DetailState | null>(null);
+  const selectedSeat = detail ? classroom.layout.seats.find((seat) => seat.id === detail.seatId) ?? null : null;
+  const selectedStudentId = selectedSeat ? plan?.assignments[selectedSeat.id] ?? null : null;
+  const selectedStudent = selectedStudentId ? studentsById.get(selectedStudentId) ?? null : null;
+
+  function handleOpenDetail(event: MouseEvent<HTMLDivElement>, seatId: string) {
+    if (mode === "print") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const bubbleWidth = Math.min(280, window.innerWidth - 24);
+    const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - bubbleWidth - 12));
+    const below = rect.bottom + 8;
+    const top = below + 220 > window.innerHeight ? Math.max(12, rect.top - 218) : below;
+    setDetail({ seatId, left, top });
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const studentId = String(event.active.id);
@@ -125,6 +147,9 @@ export function SeatingBoard({
               readonly={readonly || mode === "print"}
               empty={seat.attributes.includes("empty")}
               attributes={seat.attributes}
+              student={student}
+              selected={detail?.seatId === seat.id}
+              onOpenDetail={(event) => handleOpenDetail(event, seat.id)}
             >
               <div
                 className={cn(
@@ -163,7 +188,7 @@ export function SeatingBoard({
                     onToggleStudentLock={onToggleStudentLock}
                   />
                 ) : (
-                  <div className="flex flex-1 items-center justify-center rounded-[5px] border border-dashed border-ink/15 text-[11px] font-semibold text-ink/35">
+                  <div className="flex flex-1 items-center justify-center text-[11px] font-semibold text-ink/35">
                     {seat.attributes.includes("empty") ? "空座" : "待安排"}
                   </div>
                 )}
@@ -174,6 +199,15 @@ export function SeatingBoard({
           );
         })}
       </div>
+      {detail && selectedSeat ? (
+        <SeatDetailBubble
+          seat={selectedSeat}
+          student={selectedStudent}
+          mode={mode}
+          style={{ left: detail.left, top: detail.top }}
+          onClose={() => setDetail(null)}
+        />
+      ) : null}
     </div>
   );
 
@@ -193,6 +227,9 @@ function SeatDropCell({
   readonly,
   empty,
   attributes,
+  student,
+  selected,
+  onOpenDetail,
   children
 }: {
   seat: SeatCell;
@@ -201,6 +238,9 @@ function SeatDropCell({
   readonly: boolean;
   empty: boolean;
   attributes: SeatAttribute[];
+  student: Student | null;
+  selected: boolean;
+  onOpenDetail: (event: MouseEvent<HTMLDivElement>) => void;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({
@@ -209,22 +249,35 @@ function SeatDropCell({
   });
   const edge = attributes.includes("edge");
   const glare = attributes.includes("glare");
+  const sensitive = mode === "teacher" && Boolean(student);
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "relative overflow-hidden rounded-[7px] border transition",
+        "relative cursor-pointer rounded-[7px] border transition",
         mode === "teacher" ? "min-h-[104px] p-1.5" : "min-h-[98px] p-1.5",
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
         edge && !empty && "border-fern/35 bg-fern/[0.035]",
         glare && !empty && "bg-marigold/[0.035]",
+        sensitive && "border-l-4",
+        sensitive && visionAccentClass[student!.vision],
         isOver && "border-fern bg-chalk",
-        locked && "border-coral/50 bg-coral/5"
+        locked && "border-coral/50 bg-coral/5",
+        selected && "ring-2 ring-fern/45"
       )}
       title={mode === "teacher" ? getSeatAttributeTitle(attributes) : undefined}
+      role="button"
+      tabIndex={mode === "print" ? -1 : 0}
+      onClick={onOpenDetail}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenDetail(event as unknown as MouseEvent<HTMLDivElement>);
+        }
+      }}
     >
       {!empty ? <SeatCellPatterns attributes={attributes} /> : null}
       <div className="relative z-10">{children}</div>
@@ -292,11 +345,10 @@ function DraggableStudent({
       {...listeners}
       {...attributes}
       className={cn(
-        "relative flex min-h-[52px] flex-col gap-0.5 rounded-[6px] border border-l-4 border-ink/10 p-1.5 pb-3 shadow-sm",
-        sensitive ? visionAccentClass[student.vision] : "border-l-ink/20 bg-white",
-        !disabled && "touch-none hover:border-fern",
+        "relative flex min-h-[52px] flex-col gap-0.5 p-1 pb-3",
+        !disabled && "touch-none",
         isDragging && "z-20 opacity-80 shadow-soft",
-        locked && "border-coral/50"
+        locked && "text-coral"
       )}
       title={getStudentTitle(student, sensitive)}
     >
@@ -326,6 +378,62 @@ function DraggableStudent({
       </div>
 
       {sensitive ? <StudentStatusMarkers student={student} /> : null}
+    </div>
+  );
+}
+
+function SeatDetailBubble({
+  seat,
+  student,
+  mode,
+  style,
+  onClose
+}: {
+  seat: SeatCell;
+  student: Student | null;
+  mode: ViewMode;
+  style: CSSProperties;
+  onClose: () => void;
+}) {
+  const sensitive = shouldShowSensitive(mode);
+  const visibleAttributes = seat.attributes.filter((attribute) => attribute !== "empty");
+
+  return (
+    <div
+      className="fixed z-50 w-[280px] max-w-[calc(100vw-24px)] rounded-[8px] border border-ink/10 bg-white p-3 text-left shadow-soft no-print"
+      style={style}
+      role="dialog"
+      aria-label="座位详情"
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-black text-ink">
+            {seat.row}-{seat.column}
+            {student ? ` · ${student.name}` : ""}
+          </div>
+          <div className="mt-0.5 text-xs font-semibold text-ink/50">
+            {visibleAttributes.length ? visibleAttributes.map((attribute) => seatAttributeLabels[attribute]).join("、") : "普通座位"}
+          </div>
+        </div>
+        <button type="button" title="关闭详情" className="rounded-[5px] p-1 text-ink/45 hover:bg-chalk" onClick={onClose}>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {student ? (
+        <div className="space-y-2 text-xs leading-5 text-ink/70">
+          <p className="font-semibold text-ink">
+            {student.studentNo} · {student.gender}
+            {sensitive ? ` · ${student.heightCm}cm · ${visionLabels[student.vision]}` : ""}
+          </p>
+          {sensitive && student.tags.length ? <p>标签：{student.tags.join("、")}</p> : null}
+          {sensitive && student.specialNeeds ? <p>特殊需求：{student.specialNeeds}</p> : null}
+          {sensitive && student.remark ? <p>备注：{student.remark}</p> : null}
+          {!sensitive ? <p>公开视图仅显示姓名、学号和性别。</p> : null}
+        </div>
+      ) : (
+        <p className="text-xs leading-5 text-ink/60">当前座位尚未安排学生。</p>
+      )}
     </div>
   );
 }
