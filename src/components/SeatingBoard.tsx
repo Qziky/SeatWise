@@ -56,36 +56,72 @@ const visionStatusIcons: Record<VisionStatus, LucideIcon> = {
 };
 
 interface LegendItem {
+  className: string;
   icon: LucideIcon;
   label: string;
 }
 
+interface BorderLegendItem {
+  className: string;
+  label: string;
+}
+
+const seatAttributeIconClass: Record<SeatAttributeMarker, string> = {
+  window: "text-sky-600",
+  door: "text-violet-600",
+  glare: "text-marigold",
+  back: "text-ink/65",
+  edge: "text-fern"
+};
+
 const seatLegendItems: LegendItem[] = [
-  { label: "靠窗", icon: PanelLeft },
-  { label: "靠门", icon: DoorOpen },
-  { label: "反光", icon: Sun },
-  { label: "后排", icon: Rows3 },
-  { label: "边缘", icon: CornerDownRight }
+  { label: "靠窗", icon: PanelLeft, className: seatAttributeIconClass.window },
+  { label: "靠门", icon: DoorOpen, className: seatAttributeIconClass.door },
+  { label: "反光", icon: Sun, className: seatAttributeIconClass.glare },
+  { label: "后排", icon: Rows3, className: seatAttributeIconClass.back },
+  { label: "边缘", icon: CornerDownRight, className: seatAttributeIconClass.edge }
 ];
 
+const visionStatusIconClass: Record<VisionStatus, string> = {
+  normal: "text-fern",
+  mild: "text-marigold",
+  severe: "text-coral",
+  unknown: "text-ink/40"
+};
+
 const visionLegendItems: LegendItem[] = [
-  { label: "视力正常", icon: visionStatusIcons.normal },
-  { label: "轻度关注", icon: visionStatusIcons.mild },
-  { label: "重点照顾", icon: visionStatusIcons.severe },
-  { label: "视力未填", icon: visionStatusIcons.unknown }
+  { label: "视力正常", icon: visionStatusIcons.normal, className: visionStatusIconClass.normal },
+  { label: "轻度关注", icon: visionStatusIcons.mild, className: visionStatusIconClass.mild },
+  { label: "重点照顾", icon: visionStatusIcons.severe, className: visionStatusIconClass.severe },
+  { label: "视力未填", icon: visionStatusIcons.unknown, className: visionStatusIconClass.unknown }
 ];
 
 const heightLegendItems: LegendItem[] = [
-  { label: "偏高", icon: TrendingUp },
-  { label: "偏矮", icon: TrendingDown },
-  { label: "常规身高", icon: Minus }
+  { label: "偏高", icon: TrendingUp, className: "text-sky-600" },
+  { label: "偏矮", icon: TrendingDown, className: "text-fern" },
+  { label: "常规身高", icon: Minus, className: "text-ink/45" }
 ];
 
 const noteLegendItems: LegendItem[] = [
-  { label: "标签", icon: Tag },
-  { label: "多标签", icon: Tags },
-  { label: "特殊需求", icon: HeartPulse },
-  { label: "已锁定", icon: Lock }
+  { label: "标签", icon: Tag, className: "text-sky-600" },
+  { label: "多标签", icon: Tags, className: "text-violet-600" },
+  { label: "特殊需求", icon: HeartPulse, className: "text-coral" },
+  { label: "已锁定", icon: Lock, className: "text-coral" }
+];
+
+const seatBorderLegendItems: BorderLegendItem[] = [
+  { label: "蓝=靠窗", className: "border-sky-500/45 bg-sky-500/[0.04]" },
+  { label: "紫=靠门", className: "border-violet-500/45 bg-violet-500/[0.04]" },
+  { label: "黄=反光", className: "border-marigold bg-marigold/5" },
+  { label: "绿=边缘", className: "border-fern/55 bg-fern/[0.04]" },
+  { label: "灰=后排", className: "border-ink/25 bg-ink/[0.02]" }
+];
+
+const teacherBorderLegendItems: BorderLegendItem[] = [
+  { label: "左绿=正常", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
+  { label: "左黄=轻度", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
+  { label: "左红=重点", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
+  { label: "红框=锁定", className: "border-coral/55 bg-coral/5" }
 ];
 
 interface DetailState {
@@ -101,9 +137,9 @@ interface DragState {
 }
 
 function HeightIcon({ heightCm }: { heightCm: number }) {
-  if (heightCm >= 165) return <TrendingUp className="h-3 w-3" />;
-  if (heightCm <= 150) return <TrendingDown className="h-3 w-3" />;
-  return <Minus className="h-3 w-3" />;
+  if (heightCm >= 165) return <TrendingUp className="h-3 w-3 text-sky-600" />;
+  if (heightCm <= 150) return <TrendingDown className="h-3 w-3 text-fern" />;
+  return <Minus className="h-3 w-3 text-ink/45" />;
 }
 
 function getSeatAttributeTitle(attributes: SeatAttribute[]) {
@@ -355,6 +391,9 @@ function SeatDropCell({
   });
   const edge = attributes.includes("edge");
   const glare = attributes.includes("glare");
+  const windowSeat = attributes.includes("window");
+  const doorSeat = attributes.includes("door");
+  const backSeat = attributes.includes("back");
   const sensitive = mode === "teacher" && Boolean(student);
   const style = {
     transform: CSS.Translate.toString(transform)
@@ -378,8 +417,11 @@ function SeatDropCell({
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
+        windowSeat && !empty && "border-sky-500/35",
+        doorSeat && !empty && "border-violet-500/35",
+        backSeat && !empty && "border-ink/20",
         edge && !empty && "border-fern/45 bg-fern/[0.04] shadow-[inset_0_0_0_1px_rgba(36,132,105,0.12)]",
-        glare && !empty && "bg-marigold/[0.035]",
+        glare && !empty && "border-marigold/45 bg-marigold/[0.035]",
         sensitive && "border-l-4",
         sensitive && visionAccentClass[student!.vision],
         isOver && "border-fern bg-chalk",
@@ -461,7 +503,7 @@ function SeatCardContent({
           <span
             title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
           >
-            <Lock className="h-3 w-3 text-ink/55" />
+            <Lock className="h-3 w-3 text-coral" />
           </span>
         ) : null}
       </div>
@@ -550,7 +592,7 @@ function SeatAttributeIcon({ attribute }: { attribute: SeatAttributeMarker }) {
 
   return (
     <span title={seatAttributeLabels[attribute]}>
-      <Icon className="h-3 w-3 shrink-0" />
+      <Icon className={cn("h-3 w-3 shrink-0", seatAttributeIconClass[attribute])} />
     </span>
   );
 }
@@ -697,11 +739,13 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
       aria-label="座位图标图例"
     >
       <LegendGroup title="座位" items={seatLegendItems} />
+      <BorderLegendGroup title="座位边框" items={seatBorderLegendItems} />
       {mode === "teacher" ? (
         <>
           <LegendGroup title="视力条" items={visionLegendItems} />
           <LegendGroup title="身高点" items={heightLegendItems} />
           <LegendGroup title="标记点" items={noteLegendItems} />
+          <BorderLegendGroup title="教师边框" items={teacherBorderLegendItems} />
         </>
       ) : null}
     </div>
@@ -725,7 +769,21 @@ function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
 function LegendSwatch({ item }: { item: LegendItem }) {
   const Icon = item.icon;
 
-  return <Icon className="h-3 w-3 shrink-0 text-ink/55" />;
+  return <Icon className={cn("h-3 w-3 shrink-0", item.className)} />;
+}
+
+function BorderLegendGroup({ title, items }: { title: string; items: BorderLegendItem[] }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-ink/40">{title}</span>
+      {items.map((item) => (
+        <span key={item.label} className="flex items-center gap-0.5 whitespace-nowrap" title={item.label}>
+          <span className={cn("h-3 w-4 shrink-0 rounded-[3px] border-2", item.className)} />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function StudentStatusMarkers({ student }: { student: Student }) {
@@ -735,24 +793,24 @@ function StudentStatusMarkers({ student }: { student: Student }) {
   return (
     <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5 text-ink/55" aria-hidden="true">
       <span title={visionLabels[student.vision]}>
-        <VisionIcon className="h-3 w-3 shrink-0" />
+        <VisionIcon className={cn("h-3 w-3 shrink-0", visionStatusIconClass[student.vision])} />
       </span>
       <span className="flex h-3 w-3 shrink-0 items-center justify-center" title={`${student.heightCm}cm`}>
         <HeightIcon heightCm={student.heightCm} />
       </span>
       {visibleTags.length === 1 ? (
         <span title={visibleTags[0]}>
-          <Tag className="h-3 w-3 shrink-0" />
+          <Tag className="h-3 w-3 shrink-0 text-sky-600" />
         </span>
       ) : null}
       {visibleTags.length > 1 ? (
         <span title={visibleTags.join("、")}>
-          <Tags className="h-3 w-3 shrink-0" />
+          <Tags className="h-3 w-3 shrink-0 text-violet-600" />
         </span>
       ) : null}
       {student.specialNeeds ? (
         <span title={student.specialNeeds}>
-          <HeartPulse className="h-3 w-3 shrink-0" />
+          <HeartPulse className="h-3 w-3 shrink-0 text-coral" />
         </span>
       ) : null}
     </div>
