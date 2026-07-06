@@ -219,7 +219,6 @@ export function SeatingBoard({
                     student={student}
                     mode={mode}
                     locked={studentLocked}
-                    disabled={readonly || mode === "print" || seatLocked || studentLocked}
                   />
                 ) : (
                   <div className="flex flex-1 items-center justify-center text-[11px] font-semibold text-ink/35">
@@ -254,7 +253,7 @@ export function SeatingBoard({
   if (readonly || mode === "print") return board;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={() => setDetail(null)} onDragEnd={handleDragEnd}>
       {board}
     </DndContext>
   );
@@ -285,20 +284,42 @@ function SeatDropCell({
   onOpenDetail: (element: HTMLDivElement) => void;
   children: React.ReactNode;
 }) {
-  const { isOver, setNodeRef } = useDroppable({
+  const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: seat.id,
     disabled: readonly || empty || locked
+  });
+  const {
+    attributes: dragAttributes,
+    listeners,
+    setNodeRef: setDraggableNodeRef,
+    transform,
+    isDragging
+  } = useDraggable({
+    id: student?.id ?? seat.id,
+    disabled: readonly || empty || locked || studentLocked || !student
   });
   const edge = attributes.includes("edge");
   const glare = attributes.includes("glare");
   const sensitive = mode === "teacher" && Boolean(student);
+  const style = {
+    transform: CSS.Translate.toString(transform)
+  };
+
+  function setNodeRef(node: HTMLDivElement | null) {
+    setDroppableNodeRef(node);
+    setDraggableNodeRef(node);
+  }
 
   return (
     <div
       ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...dragAttributes}
       className={cn(
-        "relative cursor-pointer rounded-[7px] border transition",
+        "relative cursor-pointer rounded-[7px] border transition-colors",
         mode === "teacher" ? "min-h-[104px] p-1.5" : "min-h-[98px] p-1.5",
+        student && !readonly && !locked && !studentLocked && mode !== "print" && "touch-none",
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
@@ -308,6 +329,7 @@ function SeatDropCell({
         sensitive && visionAccentClass[student!.vision],
         isOver && "border-fern bg-chalk",
         (locked || studentLocked) && "border-coral/50 bg-coral/5",
+        isDragging && "z-30 opacity-90 shadow-soft ring-2 ring-fern/35",
         selected && "ring-2 ring-fern/45"
       )}
       title={mode === "teacher" ? getSeatAttributeTitle(attributes) : undefined}
@@ -359,34 +381,19 @@ function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeDot[] }
 function DraggableStudent({
   student,
   mode,
-  locked,
-  disabled
+  locked
 }: {
   student: Student;
   mode: ViewMode;
   locked: boolean;
-  disabled: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: student.id,
-    disabled
-  });
   const visible = getVisibleStudent(student, mode);
   const sensitive = shouldShowSensitive(mode);
-  const style = {
-    transform: CSS.Translate.toString(transform)
-  };
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
       className={cn(
         "relative flex min-h-[52px] flex-col gap-0.5 p-1 pb-3",
-        !disabled && "touch-none",
-        isDragging && "z-20 opacity-80 shadow-soft",
         locked && "text-coral"
       )}
       title={getStudentTitle(student, sensitive)}
