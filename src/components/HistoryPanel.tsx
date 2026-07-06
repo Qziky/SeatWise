@@ -15,7 +15,7 @@ export function HistoryPanel() {
   const latest = history.at(-1);
 
   return (
-    <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <section className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0 space-y-4">
         <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-ink">

@@ -34,8 +34,8 @@ export function StudentManager() {
 
   return (
     <section className="space-y-5">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-ink">学生档案</h2>
@@ -43,7 +43,18 @@ export function StudentManager() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 lg:hidden">
+            {classroom.students.map((student) => (
+              <StudentMobileCard
+                key={student.id}
+                student={student}
+                onUpdate={(patch) => updateStudent(student.id, patch)}
+                onRemove={() => removeStudent(student.id)}
+              />
+            ))}
+          </div>
+
+          <div className="hidden w-full max-w-full overflow-x-auto lg:block">
             <table className="min-w-[980px] w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr className="text-xs font-bold text-ink/55">
@@ -203,6 +214,123 @@ export function StudentManager() {
         </div>
       </div>
     </section>
+  );
+}
+
+function StudentMobileCard({
+  student,
+  onUpdate,
+  onRemove
+}: {
+  student: Student;
+  onUpdate: (patch: Partial<Student>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <article className="rounded-[8px] border border-ink/10 bg-paper p-3">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-base font-black text-ink">{student.name || "未命名学生"}</div>
+          <div className="mt-1 text-xs font-semibold text-ink/55">
+            {student.studentNo || "未填学号"} · {student.gender}
+          </div>
+        </div>
+        <button
+          type="button"
+          title="删除学生"
+          className="rounded-[6px] p-2 text-coral hover:bg-coral/10"
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs font-bold text-ink/55">
+          姓名
+          <input
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            value={student.name}
+            onChange={(event) => onUpdate({ name: event.target.value })}
+          />
+        </label>
+        <label className="text-xs font-bold text-ink/55">
+          学号
+          <input
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            value={student.studentNo}
+            onChange={(event) => onUpdate({ studentNo: event.target.value })}
+          />
+        </label>
+        <label className="text-xs font-bold text-ink/55">
+          性别
+          <select
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            value={student.gender}
+            onChange={(event) => onUpdate({ gender: event.target.value as Gender })}
+          >
+            {genderOptions.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-bold text-ink/55">
+          身高
+          <input
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            type="number"
+            value={student.heightCm}
+            onChange={(event) => onUpdate({ heightCm: Number(event.target.value) })}
+          />
+        </label>
+        <label className="text-xs font-bold text-ink/55">
+          视力
+          <select
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            value={student.vision}
+            onChange={(event) => onUpdate({ vision: event.target.value as VisionStatus })}
+          >
+            {visionOptions.map((option) => (
+              <option key={option} value={option}>
+                {visionLabels[option]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-bold text-ink/55">
+          标签
+          <input
+            className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+            value={student.tags.join("、")}
+            onChange={(event) =>
+              onUpdate({
+                tags: event.target.value
+                  .split(/[、,，;；]/)
+                  .map((item) => item.trim())
+                  .filter(Boolean)
+              })
+            }
+          />
+        </label>
+      </div>
+
+      <label className="mt-2 block text-xs font-bold text-ink/55">
+        备注
+        <input
+          className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+          value={student.remark}
+          onChange={(event) => onUpdate({ remark: event.target.value })}
+        />
+      </label>
+      <label className="mt-2 block text-xs font-bold text-ink/55">
+        特殊需求
+        <input
+          className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1.5 text-sm"
+          value={student.specialNeeds}
+          onChange={(event) => onUpdate({ specialNeeds: event.target.value })}
+        />
+      </label>
+    </article>
   );
 }
 

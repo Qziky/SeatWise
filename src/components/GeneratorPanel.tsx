@@ -79,7 +79,7 @@ export function GeneratorPanel() {
         </div>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm print-surface">
           {selectedPlan ? (
             <SeatingBoard

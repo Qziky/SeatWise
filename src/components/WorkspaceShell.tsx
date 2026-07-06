@@ -41,7 +41,7 @@ export function WorkspaceShell() {
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/95 backdrop-blur no-print">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-3 lg:px-6">
+        <div className="mx-auto flex max-w-[1880px] items-center justify-between gap-3 px-4 py-3 lg:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -94,7 +94,7 @@ export function WorkspaceShell() {
         </nav>
       </header>
 
-      <div className="mx-auto grid max-w-[1440px] gap-4 px-4 py-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-6">
+      <div className="mx-auto grid max-w-[1880px] gap-4 px-4 py-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-6">
         <aside className="sticky top-[74px] hidden h-[calc(100vh-96px)] rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm lg:block no-print">
           <nav className="space-y-2">
             {sections.map((section) => (

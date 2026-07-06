@@ -28,6 +28,12 @@ export function SeatingBoard({
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const studentsById = new Map(classroom.students.map((student) => [student.id, student]));
+  const isTeacherMode = mode === "teacher";
+  const columnMinWidth = isTeacherMode ? 132 : 104;
+  const boardMinWidth = Math.max(
+    classroom.layout.columns * columnMinWidth + (classroom.layout.columns - 1) * 8 + 24,
+    isTeacherMode ? 980 : 720
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     const studentId = String(event.active.id);
@@ -39,8 +45,11 @@ export function SeatingBoard({
   const board = (
     <div className="w-full max-w-full overflow-x-auto pb-2">
       <div
-        className="grid min-w-[720px] gap-2 rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm print-surface"
-        style={{ gridTemplateColumns: `repeat(${classroom.layout.columns}, minmax(84px, 1fr))` }}
+        className="grid gap-2 rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm print-surface"
+        style={{
+          gridTemplateColumns: `repeat(${classroom.layout.columns}, minmax(${columnMinWidth}px, 1fr))`,
+          minWidth: boardMinWidth
+        }}
       >
         {classroom.layout.seats.map((seat) => {
           const studentId = plan?.assignments[seat.id] ?? null;
@@ -52,11 +61,12 @@ export function SeatingBoard({
             <SeatDropCell
               key={seat.id}
               seat={seat}
+              mode={mode}
               locked={seatLocked}
               readonly={readonly || mode === "print"}
               empty={seat.attributes.includes("empty")}
             >
-              <div className="flex min-h-[112px] flex-col justify-between gap-2">
+              <div className={cn("flex flex-col justify-between gap-2", isTeacherMode ? "min-h-[126px]" : "min-h-[98px]")}>
                 <div className="flex items-start justify-between gap-1">
                   <span className="text-[11px] font-semibold text-ink/45">
                     {seat.row}-{seat.column}
@@ -99,7 +109,7 @@ export function SeatingBoard({
                       .map((attribute) => (
                         <span
                           key={attribute}
-                          className="rounded-[4px] bg-chalk px-1.5 py-0.5 text-[10px] font-semibold text-fern"
+                          className="whitespace-nowrap rounded-[4px] bg-chalk px-1.5 py-0.5 text-[10px] font-semibold text-fern"
                         >
                           {seatAttributeLabels[attribute]}
                         </span>
@@ -125,12 +135,14 @@ export function SeatingBoard({
 
 function SeatDropCell({
   seat,
+  mode,
   locked,
   readonly,
   empty,
   children
 }: {
   seat: SeatCell;
+  mode: ViewMode;
   locked: boolean;
   readonly: boolean;
   empty: boolean;
@@ -145,7 +157,8 @@ function SeatDropCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-[128px] rounded-[8px] border p-2 transition",
+        "rounded-[8px] border p-2 transition",
+        mode === "teacher" ? "min-h-[148px]" : "min-h-[116px]",
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
@@ -188,17 +201,17 @@ function DraggableStudent({
       {...listeners}
       {...attributes}
       className={cn(
-        "flex min-h-[70px] flex-col gap-1 rounded-[8px] border border-ink/10 bg-white p-2 shadow-sm",
+        "relative flex min-h-[78px] flex-col gap-1 rounded-[8px] border border-ink/10 bg-white p-2 shadow-sm",
         !disabled && "touch-none hover:border-fern",
         isDragging && "z-20 opacity-80 shadow-soft",
         locked && "border-coral/50"
       )}
       title={sensitive ? `${student.name}｜${student.tags.join("、")}｜${student.remark}` : student.name}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="pr-6">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-ink">{visible.name}</div>
-          <div className="text-[11px] font-semibold text-ink/50">
+          <div className="break-keep text-base font-black leading-5 text-ink">{visible.name}</div>
+          <div className="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-ink/50">
             {visible.studentNo} · {visible.gender}
           </div>
         </div>
@@ -206,7 +219,10 @@ function DraggableStudent({
           <button
             type="button"
             title={locked ? "取消锁定学生" : "锁定学生"}
-            className={cn("no-print rounded-[6px] p-1 transition hover:bg-ink/10", locked ? "text-coral" : "text-ink/45")}
+            className={cn(
+              "no-print absolute right-1.5 top-1.5 rounded-[6px] p-1 transition hover:bg-ink/10",
+              locked ? "text-coral" : "text-ink/45"
+            )}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => onToggleStudentLock(student.id)}
           >
@@ -216,13 +232,18 @@ function DraggableStudent({
       </div>
 
       {sensitive ? (
-        <div className="flex flex-wrap gap-1 text-[10px] font-semibold">
-          <span className="rounded-[4px] bg-chalk px-1.5 py-0.5 text-fern">{student.heightCm}cm</span>
-          <span className="rounded-[4px] bg-marigold/15 px-1.5 py-0.5 text-marigold">
+        <div className="mt-1 flex max-w-full flex-wrap gap-1 text-[10px] font-semibold">
+          <span className="max-w-full whitespace-nowrap rounded-[4px] bg-chalk px-1.5 py-0.5 text-fern">
+            {student.heightCm}cm
+          </span>
+          <span className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[4px] bg-marigold/15 px-1.5 py-0.5 text-marigold">
             {visionLabels[student.vision]}
           </span>
-          {student.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="rounded-[4px] bg-coral/10 px-1.5 py-0.5 text-coral">
+          {student.tags.slice(0, 1).map((tag) => (
+            <span
+              key={tag}
+              className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[4px] bg-coral/10 px-1.5 py-0.5 text-coral"
+            >
               {tag}
             </span>
           ))}
