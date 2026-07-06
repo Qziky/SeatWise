@@ -112,11 +112,11 @@ const noteLegendItems: LegendItem[] = [
 ];
 
 const seatBorderLegendItems: BorderLegendItem[] = [
-  { label: "蓝边=靠窗", shortLabel: "窗", className: "border-sky-500/45 bg-sky-500/[0.04]" },
-  { label: "紫边=靠门", shortLabel: "门", className: "border-violet-500/45 bg-violet-500/[0.04]" },
+  { label: "蓝上边=靠窗", shortLabel: "窗", className: "border-t-2 border-t-sky-500/45 border-x-ink/10 border-b-ink/10 bg-sky-500/[0.04]" },
+  { label: "紫右边=靠门", shortLabel: "门", className: "border-r-2 border-r-violet-500/45 border-y-ink/10 border-l-ink/10 bg-violet-500/[0.04]" },
   { label: "黄边=反光", shortLabel: "光", className: "border-marigold bg-marigold/5" },
   { label: "绿边=边缘", shortLabel: "边", className: "border-fern/55 bg-fern/[0.04]" },
-  { label: "灰边=后排", shortLabel: "后", className: "border-ink/25 bg-ink/[0.02]" }
+  { label: "灰下边=后排", shortLabel: "后", className: "border-b-2 border-b-ink/25 border-x-ink/10 border-t-ink/10 bg-ink/[0.02]" }
 ];
 
 const teacherBorderLegendItems: BorderLegendItem[] = [
@@ -419,9 +419,9 @@ function SeatDropCell({
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
-        windowSeat && !empty && "border-sky-500/35",
-        doorSeat && !empty && "border-violet-500/35",
-        backSeat && !empty && "border-ink/20",
+        windowSeat && !empty && "border-t-2 border-t-sky-500/45",
+        doorSeat && !empty && "border-r-2 border-r-violet-500/45",
+        backSeat && !empty && "border-b-2 border-b-ink/25",
         edge && !empty && "border-fern/45 bg-fern/[0.04] shadow-[inset_0_0_0_1px_rgba(36,132,105,0.12)]",
         glare && !empty && "border-marigold/45 bg-marigold/[0.035]",
         sensitive && "border-l-4",
@@ -570,7 +570,7 @@ function SeatCellPatterns({ attributes }: { attributes: SeatAttribute[] }) {
       {attributes.includes("glare") ? (
         <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(222,145,43,0.15)_0,rgba(222,145,43,0.15)_3px,transparent_3px,transparent_10px)]" />
       ) : null}
-      {attributes.includes("window") ? <div className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-sky-500/35" /> : null}
+      {attributes.includes("window") ? <div className="absolute left-2 right-2 top-0 h-1 rounded-b-full bg-sky-500/35" /> : null}
       {attributes.includes("door") ? <div className="absolute bottom-2 right-0 top-2 w-1 rounded-l-full bg-violet-500/35" /> : null}
       {attributes.includes("back") ? <div className="absolute bottom-0 left-2 right-2 h-1 rounded-t-full bg-ink/20" /> : null}
     </div>
