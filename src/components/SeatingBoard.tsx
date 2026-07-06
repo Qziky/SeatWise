@@ -6,29 +6,57 @@ import { CSS } from "@dnd-kit/utilities";
 import { Lock, Unlock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
-import type { ClassRoom, SeatingPlan, SeatCell, Student, ViewMode } from "@/lib/types";
-import { seatAttributeLabels } from "@/lib/types";
+import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
+import { seatAttributeLabels, visionLabels } from "@/lib/types";
 
-const compactVisionLabels: Record<Student["vision"], string> = {
-  normal: "正常",
-  mild: "轻关",
-  severe: "重照",
-  unknown: "未填"
+const seatAttributeDotClass: Record<Exclude<SeatAttribute, "empty">, string> = {
+  window: "bg-sky-500",
+  door: "bg-violet-500",
+  glare: "bg-marigold",
+  back: "bg-ink/45",
+  edge: "bg-fern"
 };
 
-const compactTagLabels: Record<string, string> = {
-  需要靠前: "靠前",
-  近期观察: "观察",
-  近期需关注: "关注",
-  小组带动: "带动",
-  容易分心: "分心",
-  互助搭配: "互助",
-  适合后排: "后排",
-  小组稳定: "稳定"
+const visionAccentClass: Record<VisionStatus, string> = {
+  normal: "border-l-fern/55 bg-white",
+  mild: "border-l-marigold bg-marigold/5",
+  severe: "border-l-coral bg-coral/5",
+  unknown: "border-l-ink/20 bg-white"
 };
 
-function compactTagLabel(tag: string) {
-  return compactTagLabels[tag] ?? tag.slice(0, 2);
+const visionDotClass: Record<VisionStatus, string> = {
+  normal: "bg-fern",
+  mild: "bg-marigold",
+  severe: "bg-coral",
+  unknown: "bg-ink/30"
+};
+
+const tagDotClass = ["bg-coral/80", "bg-sky-500", "bg-violet-500"];
+
+function heightDotClass(heightCm: number) {
+  if (heightCm >= 165) return "bg-sky-500";
+  if (heightCm <= 150) return "bg-fern";
+  return "bg-ink/25";
+}
+
+function getSeatAttributeTitle(attributes: SeatAttribute[]) {
+  const visible = attributes.filter((attribute) => attribute !== "empty");
+  return visible.length ? visible.map((attribute) => seatAttributeLabels[attribute]).join("、") : "普通座位";
+}
+
+function getStudentTitle(student: Student, sensitive: boolean) {
+  if (!sensitive) return student.name;
+
+  return [
+    `${student.name} ${student.studentNo} ${student.gender}`,
+    `${student.heightCm}cm`,
+    visionLabels[student.vision],
+    student.tags.length ? student.tags.join("、") : "",
+    student.specialNeeds,
+    student.remark
+  ]
+    .filter(Boolean)
+    .join("｜");
 }
 
 export function SeatingBoard({
@@ -51,7 +79,7 @@ export function SeatingBoard({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const studentsById = new Map(classroom.students.map((student) => [student.id, student]));
   const isTeacherMode = mode === "teacher";
-  const columnMinWidth = isTeacherMode ? 72 : 66;
+  const columnMinWidth = isTeacherMode ? 78 : 66;
   const gridGap = isTeacherMode ? 4 : 5;
   const boardPadding = isTeacherMode ? 16 : 18;
   const boardMinWidth = Math.max(
@@ -84,7 +112,9 @@ export function SeatingBoard({
           const student = studentId ? studentsById.get(studentId) ?? null : null;
           const seatLocked = Boolean(plan?.lockedSeatIds.includes(seat.id));
           const studentLocked = Boolean(student && plan?.lockedStudentIds.includes(student.id));
-          const visibleAttributes = seat.attributes.filter((attribute) => attribute !== "empty");
+          const visibleAttributes = seat.attributes.filter(
+            (attribute): attribute is Exclude<SeatAttribute, "empty"> => attribute !== "empty"
+          );
 
           return (
             <SeatDropCell
@@ -94,12 +124,15 @@ export function SeatingBoard({
               locked={seatLocked}
               readonly={readonly || mode === "print"}
               empty={seat.attributes.includes("empty")}
+              attributes={seat.attributes}
             >
               <div
                 className={cn(
                   "flex flex-col justify-between",
-                  isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5"
+                  isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5",
+                  visibleAttributes.length && "pb-1.5"
                 )}
+                title={mode === "teacher" ? getSeatAttributeTitle(seat.attributes) : undefined}
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[10px] font-semibold leading-none text-ink/45">
@@ -135,23 +168,7 @@ export function SeatingBoard({
                   </div>
                 )}
 
-                {mode === "teacher" ? (
-                  <div className="flex min-h-4 max-w-full items-center gap-0.5 overflow-hidden">
-                    {visibleAttributes.slice(0, 2).map((attribute) => (
-                      <span
-                        key={attribute}
-                        className="shrink-0 whitespace-nowrap rounded-[3px] bg-chalk px-1 py-0.5 text-[9px] font-semibold leading-none text-fern"
-                      >
-                        {seatAttributeLabels[attribute]}
-                      </span>
-                    ))}
-                    {visibleAttributes.length > 2 ? (
-                      <span className="shrink-0 rounded-[3px] bg-ink/5 px-1 py-0.5 text-[9px] font-semibold leading-none text-ink/45">
-                        +{visibleAttributes.length - 2}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
+                {mode === "teacher" ? <SeatAttributeMarkers attributes={visibleAttributes} /> : null}
               </div>
             </SeatDropCell>
           );
@@ -175,6 +192,7 @@ function SeatDropCell({
   locked,
   readonly,
   empty,
+  attributes,
   children
 }: {
   seat: SeatCell;
@@ -182,27 +200,64 @@ function SeatDropCell({
   locked: boolean;
   readonly: boolean;
   empty: boolean;
+  attributes: SeatAttribute[];
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: seat.id,
     disabled: readonly || empty || locked
   });
+  const edge = attributes.includes("edge");
+  const glare = attributes.includes("glare");
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-[7px] border transition",
+        "relative overflow-hidden rounded-[7px] border transition",
         mode === "teacher" ? "min-h-[104px] p-1.5" : "min-h-[98px] p-1.5",
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
+        edge && !empty && "border-fern/35 bg-fern/[0.035]",
+        glare && !empty && "bg-marigold/[0.035]",
         isOver && "border-fern bg-chalk",
         locked && "border-coral/50 bg-coral/5"
       )}
+      title={mode === "teacher" ? getSeatAttributeTitle(attributes) : undefined}
     >
-      {children}
+      {!empty ? <SeatCellPatterns attributes={attributes} /> : null}
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function SeatCellPatterns({ attributes }: { attributes: SeatAttribute[] }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+      {attributes.includes("glare") ? (
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(222,145,43,0.15)_0,rgba(222,145,43,0.15)_3px,transparent_3px,transparent_10px)]" />
+      ) : null}
+      {attributes.includes("window") ? <div className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-sky-500/35" /> : null}
+      {attributes.includes("door") ? <div className="absolute bottom-2 right-0 top-2 w-1 rounded-l-full bg-violet-500/35" /> : null}
+      {attributes.includes("back") ? <div className="absolute bottom-0 left-2 right-2 h-1 rounded-t-full bg-ink/20" /> : null}
+      {attributes.includes("edge") ? <div className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-fern/35" /> : null}
+    </div>
+  );
+}
+
+function SeatAttributeMarkers({ attributes }: { attributes: Array<Exclude<SeatAttribute, "empty">> }) {
+  if (!attributes.length) return <div className="min-h-3" />;
+
+  return (
+    <div className="flex min-h-3 items-center gap-0.5" aria-hidden="true">
+      {attributes.slice(0, 4).map((attribute) => (
+        <span
+          key={attribute}
+          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", seatAttributeDotClass[attribute])}
+          title={seatAttributeLabels[attribute]}
+        />
+      ))}
     </div>
   );
 }
@@ -237,12 +292,13 @@ function DraggableStudent({
       {...listeners}
       {...attributes}
       className={cn(
-        "relative flex min-h-[54px] flex-col gap-0.5 rounded-[6px] border border-ink/10 bg-white p-1.5 shadow-sm",
+        "relative flex min-h-[52px] flex-col gap-0.5 rounded-[6px] border border-l-4 border-ink/10 p-1.5 pb-3 shadow-sm",
+        sensitive ? visionAccentClass[student.vision] : "border-l-ink/20 bg-white",
         !disabled && "touch-none hover:border-fern",
         isDragging && "z-20 opacity-80 shadow-soft",
         locked && "border-coral/50"
       )}
-      title={sensitive ? `${student.name}｜${student.tags.join("、")}｜${student.remark}` : student.name}
+      title={getStudentTitle(student, sensitive)}
     >
       <div className="pr-4">
         <div className="min-w-0">
@@ -269,25 +325,20 @@ function DraggableStudent({
         ) : null}
       </div>
 
-      {sensitive ? (
-        <div className="mt-0.5 flex max-w-full items-center gap-0.5 text-[9px] font-semibold leading-none">
-          <span className="shrink-0 whitespace-nowrap rounded-[3px] bg-chalk px-1 py-0.5 text-fern">
-            {student.heightCm}cm
-          </span>
-          <span className="shrink-0 whitespace-nowrap rounded-[3px] bg-marigold/15 px-1 py-0.5 text-marigold">
-            {compactVisionLabels[student.vision]}
-          </span>
-          {student.tags.slice(0, 1).map((tag) => (
-            <span
-              key={tag}
-              className="hidden shrink-0 whitespace-nowrap rounded-[3px] bg-coral/10 px-1 py-0.5 text-coral lg:inline-block"
-              title={tag}
-            >
-              {compactTagLabel(tag)}
-            </span>
-          ))}
-        </div>
-      ) : null}
+      {sensitive ? <StudentStatusMarkers student={student} /> : null}
+    </div>
+  );
+}
+
+function StudentStatusMarkers({ student }: { student: Student }) {
+  return (
+    <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5" aria-hidden="true">
+      <span className={cn("h-1.5 w-4 shrink-0 rounded-full", visionDotClass[student.vision])} title={visionLabels[student.vision]} />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", heightDotClass(student.heightCm))} title={`${student.heightCm}cm`} />
+      {student.tags.slice(0, 2).map((tag, index) => (
+        <span key={tag} className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tagDotClass[index])} title={tag} />
+      ))}
+      {student.specialNeeds ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink/55" title={student.specialNeeds} /> : null}
     </div>
   );
 }
