@@ -3,27 +3,7 @@
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  CircleAlert,
-  CornerDownRight,
-  DoorOpen,
-  Eye,
-  EyeOff,
-  HeartPulse,
-  Lock,
-  PanelLeft,
-  Ruler,
-  Rows3,
-  ScanEye,
-  Sun,
-  Tag,
-  Tags,
-  TrendingDown,
-  TrendingUp,
-  Unlock,
-  X
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Lock, Unlock, X } from "lucide-react";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
@@ -33,14 +13,6 @@ import { seatAttributeLabels, visionLabels } from "@/lib/types";
 
 type SeatAttributeMarker = Exclude<SeatAttribute, "empty">;
 
-const seatAttributeIcons: Record<SeatAttributeMarker, LucideIcon> = {
-  window: PanelLeft,
-  door: DoorOpen,
-  glare: Sun,
-  back: Rows3,
-  edge: CornerDownRight
-};
-
 const visionAccentClass: Record<VisionStatus, string> = {
   normal: "border-l-fern/55 bg-white",
   mild: "border-l-marigold bg-marigold/5",
@@ -48,16 +20,8 @@ const visionAccentClass: Record<VisionStatus, string> = {
   unknown: "border-l-ink/20 bg-white"
 };
 
-const visionStatusIcons: Record<VisionStatus, LucideIcon> = {
-  normal: Eye,
-  mild: ScanEye,
-  severe: CircleAlert,
-  unknown: EyeOff
-};
-
 interface LegendItem {
   className: string;
-  icon: LucideIcon;
   label: string;
   shortLabel: string;
 }
@@ -68,47 +32,62 @@ interface BorderLegendItem {
   shortLabel: string;
 }
 
-const seatAttributeIconClass: Record<SeatAttributeMarker, string> = {
-  window: "text-sky-600",
-  door: "text-violet-600",
-  glare: "text-marigold",
-  back: "text-ink/65",
-  edge: "text-fern"
+const seatAttributeMarkerClass: Record<SeatAttributeMarker, string> = {
+  window: "border-sky-500/45 bg-sky-500/10 text-sky-700",
+  door: "border-violet-500/45 bg-violet-500/10 text-violet-700",
+  glare: "border-marigold/45 bg-marigold/10 text-marigold",
+  back: "border-ink/20 bg-ink/[0.04] text-ink/65",
+  edge: "border-fern/45 bg-fern/10 text-fern"
+};
+
+const seatAttributeShortLabels: Record<SeatAttributeMarker, string> = {
+  window: "窗",
+  door: "门",
+  glare: "光",
+  back: "后",
+  edge: "边"
 };
 
 const seatLegendItems: LegendItem[] = [
-  { label: "靠窗", shortLabel: "窗", icon: PanelLeft, className: seatAttributeIconClass.window },
-  { label: "靠门", shortLabel: "门", icon: DoorOpen, className: seatAttributeIconClass.door },
-  { label: "反光", shortLabel: "光", icon: Sun, className: seatAttributeIconClass.glare },
-  { label: "后排", shortLabel: "后", icon: Rows3, className: seatAttributeIconClass.back },
-  { label: "边缘", shortLabel: "边", icon: CornerDownRight, className: seatAttributeIconClass.edge }
+  { label: "靠窗", shortLabel: "窗", className: seatAttributeMarkerClass.window },
+  { label: "靠门", shortLabel: "门", className: seatAttributeMarkerClass.door },
+  { label: "反光", shortLabel: "光", className: seatAttributeMarkerClass.glare },
+  { label: "后排", shortLabel: "后", className: seatAttributeMarkerClass.back },
+  { label: "边缘", shortLabel: "边", className: seatAttributeMarkerClass.edge }
 ];
 
-const visionStatusIconClass: Record<VisionStatus, string> = {
-  normal: "text-fern",
-  mild: "text-marigold",
-  severe: "text-coral",
-  unknown: "text-ink/40"
+const visionStatusMarkerClass: Record<VisionStatus, string> = {
+  normal: "border-fern/45 bg-fern/10 text-fern",
+  mild: "border-marigold/45 bg-marigold/10 text-marigold",
+  severe: "border-coral/45 bg-coral/10 text-coral",
+  unknown: "border-ink/20 bg-ink/[0.04] text-ink/45"
+};
+
+const visionStatusShortLabels: Record<VisionStatus, string> = {
+  normal: "正",
+  mild: "轻",
+  severe: "重",
+  unknown: "未"
 };
 
 const visionLegendItems: LegendItem[] = [
-  { label: "视力正常", shortLabel: "正", icon: visionStatusIcons.normal, className: visionStatusIconClass.normal },
-  { label: "轻度关注", shortLabel: "轻", icon: visionStatusIcons.mild, className: visionStatusIconClass.mild },
-  { label: "重点照顾", shortLabel: "重", icon: visionStatusIcons.severe, className: visionStatusIconClass.severe },
-  { label: "视力未填", shortLabel: "未", icon: visionStatusIcons.unknown, className: visionStatusIconClass.unknown }
+  { label: "视力正常", shortLabel: "正", className: visionStatusMarkerClass.normal },
+  { label: "轻度关注", shortLabel: "轻", className: visionStatusMarkerClass.mild },
+  { label: "重点照顾", shortLabel: "重", className: visionStatusMarkerClass.severe },
+  { label: "视力未填", shortLabel: "未", className: visionStatusMarkerClass.unknown }
 ];
 
 const heightLegendItems: LegendItem[] = [
-  { label: "偏高", shortLabel: "高", icon: TrendingUp, className: "text-sky-600" },
-  { label: "偏矮", shortLabel: "矮", icon: TrendingDown, className: "text-fern" },
-  { label: "常规身高", shortLabel: "常", icon: Ruler, className: "text-ink/45" }
+  { label: "偏高", shortLabel: "高", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
+  { label: "偏矮", shortLabel: "矮", className: "border-fern/45 bg-fern/10 text-fern" },
+  { label: "常规身高", shortLabel: "常", className: "border-ink/20 bg-ink/[0.04] text-ink/45" }
 ];
 
 const noteLegendItems: LegendItem[] = [
-  { label: "标签", shortLabel: "标", icon: Tag, className: "text-sky-600" },
-  { label: "多标签", shortLabel: "多", icon: Tags, className: "text-violet-600" },
-  { label: "特殊需求", shortLabel: "特", icon: HeartPulse, className: "text-coral" },
-  { label: "已锁定", shortLabel: "锁", icon: Lock, className: "text-coral" }
+  { label: "标签", shortLabel: "标", className: "border-sky-500/45 bg-sky-500/10 text-sky-700" },
+  { label: "多标签", shortLabel: "多", className: "border-violet-500/45 bg-violet-500/10 text-violet-700" },
+  { label: "特殊需求", shortLabel: "特", className: "border-coral/45 bg-coral/10 text-coral" },
+  { label: "已锁定", shortLabel: "锁", className: "border-coral/45 bg-coral/10 text-coral" }
 ];
 
 const seatBorderLegendItems: BorderLegendItem[] = [
@@ -138,15 +117,15 @@ interface DragState {
   studentId: string;
 }
 
-function HeightIcon({ heightCm }: { heightCm: number }) {
-  if (heightCm >= 165) return <TrendingUp className="h-3 w-3 text-sky-600" />;
-  if (heightCm <= 150) return <TrendingDown className="h-3 w-3 text-fern" />;
-  return <Ruler className="h-3 w-3 text-ink/45" />;
-}
-
 function getSeatAttributeTitle(attributes: SeatAttribute[]) {
   const visible = attributes.filter((attribute) => attribute !== "empty");
   return visible.length ? visible.map((attribute) => seatAttributeLabels[attribute]).join("、") : "普通座位";
+}
+
+function getHeightMarker(heightCm: number): LegendItem | null {
+  if (heightCm >= 165) return heightLegendItems[0];
+  if (heightCm <= 150) return heightLegendItems[1];
+  return null;
 }
 
 function getStudentTitle(student: Student, sensitive: boolean) {
@@ -502,11 +481,11 @@ function SeatCardContent({
           {seat.row}-{seat.column}
         </span>
         {mode === "teacher" && (seatLocked || studentLocked) ? (
-          <span
-            title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
-          >
-            <Lock className="h-3 w-3 text-coral" />
-          </span>
+          <MiniTextBadge
+            className={noteLegendItems[3].className}
+            label={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
+            shortLabel="锁"
+          />
         ) : null}
       </div>
 
@@ -581,20 +560,37 @@ function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeMarker[
   if (!attributes.length) return <div className="min-h-3" />;
 
   return (
-    <div className="flex min-h-3 items-center gap-0.5 text-ink/55" aria-hidden="true">
+    <div className="flex min-h-3 items-center gap-0.5" aria-hidden="true">
       {attributes.slice(0, 4).map((attribute) => (
-        <SeatAttributeIcon key={attribute} attribute={attribute} />
+        <MiniTextBadge
+          key={attribute}
+          className={seatAttributeMarkerClass[attribute]}
+          label={seatAttributeLabels[attribute]}
+          shortLabel={seatAttributeShortLabels[attribute]}
+        />
       ))}
     </div>
   );
 }
 
-function SeatAttributeIcon({ attribute }: { attribute: SeatAttributeMarker }) {
-  const Icon = seatAttributeIcons[attribute];
-
+function MiniTextBadge({
+  className,
+  label,
+  shortLabel
+}: {
+  className: string;
+  label: string;
+  shortLabel: string;
+}) {
   return (
-    <span title={seatAttributeLabels[attribute]}>
-      <Icon className={cn("h-3 w-3 shrink-0", seatAttributeIconClass[attribute])} />
+    <span
+      className={cn(
+        "inline-flex h-3 min-w-3 shrink-0 items-center justify-center rounded-[3px] border px-[2px] text-[8px] font-black leading-none",
+        className
+      )}
+      title={label}
+    >
+      {shortLabel}
     </span>
   );
 }
@@ -773,9 +769,7 @@ function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
 }
 
 function LegendSwatch({ item }: { item: LegendItem }) {
-  const Icon = item.icon;
-
-  return <Icon className={cn("h-3 w-3 shrink-0", item.className)} />;
+  return <MiniTextBadge className={item.className} label={item.label} shortLabel={item.shortLabel} />;
 }
 
 function BorderLegendGroup({ title, items }: { title: string; items: BorderLegendItem[] }) {
@@ -797,32 +791,44 @@ function BorderLegendGroup({ title, items }: { title: string; items: BorderLegen
 }
 
 function StudentStatusMarkers({ student }: { student: Student }) {
-  const VisionIcon = visionStatusIcons[student.vision];
   const visibleTags = student.tags.slice(0, 2);
+  const heightMarker = getHeightMarker(student.heightCm);
+  const markers: LegendItem[] = [];
+
+  if (student.vision !== "normal") {
+    markers.push({
+      className: visionStatusMarkerClass[student.vision],
+      label: visionLabels[student.vision],
+      shortLabel: visionStatusShortLabels[student.vision]
+    });
+  }
+
+  if (heightMarker) markers.push(heightMarker);
+
+  if (visibleTags.length === 1) {
+    markers.push({ ...noteLegendItems[0], label: visibleTags[0] });
+  }
+
+  if (visibleTags.length > 1) {
+    markers.push({ ...noteLegendItems[1], label: visibleTags.join("、") });
+  }
+
+  if (student.specialNeeds) {
+    markers.push({ ...noteLegendItems[2], label: student.specialNeeds });
+  }
+
+  if (!markers.length) return null;
 
   return (
-    <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5 text-ink/55" aria-hidden="true">
-      <span title={visionLabels[student.vision]}>
-        <VisionIcon className={cn("h-3 w-3 shrink-0", visionStatusIconClass[student.vision])} />
-      </span>
-      <span className="flex h-3 w-3 shrink-0 items-center justify-center" title={`${student.heightCm}cm`}>
-        <HeightIcon heightCm={student.heightCm} />
-      </span>
-      {visibleTags.length === 1 ? (
-        <span title={visibleTags[0]}>
-          <Tag className="h-3 w-3 shrink-0 text-sky-600" />
-        </span>
-      ) : null}
-      {visibleTags.length > 1 ? (
-        <span title={visibleTags.join("、")}>
-          <Tags className="h-3 w-3 shrink-0 text-violet-600" />
-        </span>
-      ) : null}
-      {student.specialNeeds ? (
-        <span title={student.specialNeeds}>
-          <HeartPulse className="h-3 w-3 shrink-0 text-coral" />
-        </span>
-      ) : null}
+    <div className="absolute bottom-1 left-1.5 right-1.5 flex items-center gap-0.5" aria-hidden="true">
+      {markers.slice(0, 4).map((marker) => (
+        <MiniTextBadge
+          key={`${marker.shortLabel}-${marker.label}`}
+          className={marker.className}
+          label={marker.label}
+          shortLabel={marker.shortLabel}
+        />
+      ))}
     </div>
   );
 }
