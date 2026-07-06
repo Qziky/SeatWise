@@ -36,18 +36,18 @@ export function LayoutEditor() {
   const activeSeats = classroom.layout.seats.filter((seat) => !seat.attributes.includes("empty")).length;
 
   return (
-    <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="space-y-4">
-        <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-ink">
+    <section className="grid min-w-0 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="space-y-3">
+        <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-ink">
             <Grid3X3 className="h-5 w-5 text-fern" />
             教室布局
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <label className="text-sm font-semibold text-ink/65">
               行数
               <input
-                className="mt-1 w-full rounded-[8px] border border-ink/10 px-3 py-2"
+                className="mt-1 w-full rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
                 type="number"
                 min={2}
                 max={12}
@@ -58,7 +58,7 @@ export function LayoutEditor() {
             <label className="text-sm font-semibold text-ink/65">
               列数
               <input
-                className="mt-1 w-full rounded-[8px] border border-ink/10 px-3 py-2"
+                className="mt-1 w-full rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
                 type="number"
                 min={2}
                 max={12}
@@ -69,7 +69,7 @@ export function LayoutEditor() {
           </div>
           <button
             type="button"
-            className="mt-3 w-full rounded-[8px] bg-fern px-4 py-2 font-bold text-white hover:bg-fern/90"
+            className="mt-2 w-full rounded-[7px] bg-fern px-3 py-1.5 text-sm font-bold text-white hover:bg-fern/90"
             onClick={() => updateLayoutSize(rows, columns)}
           >
             更新网格
@@ -78,7 +78,7 @@ export function LayoutEditor() {
           <label className="mt-4 block text-sm font-semibold text-ink/65">
             讲台方向
             <select
-              className="mt-1 w-full rounded-[8px] border border-ink/10 px-3 py-2"
+              className="mt-1 w-full rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
               value={classroom.layout.podium}
               onChange={(event) => updatePodium(event.target.value as PodiumDirection)}
             >
@@ -90,17 +90,17 @@ export function LayoutEditor() {
             </select>
           </label>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-[8px] bg-chalk p-3 text-sm font-semibold text-ink/70">
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-[7px] bg-chalk p-2 text-xs font-semibold text-ink/70">
             <span>总座位 {classroom.layout.seats.length}</span>
             <span>可用 {activeSeats}</span>
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-          <h3 className="mb-3 text-base font-bold text-ink">座位标记</h3>
+        <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 text-sm font-bold text-ink">座位标记</h3>
           {selectedSeat ? (
             <>
-              <div className="mb-3 rounded-[8px] bg-paper p-3 text-sm font-semibold text-ink/70">
+              <div className="mb-2 rounded-[7px] bg-paper p-2 text-xs font-semibold text-ink/70">
                 第 {selectedSeat.row} 排，第 {selectedSeat.column} 座
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -112,7 +112,7 @@ export function LayoutEditor() {
                       type="button"
                       key={attribute.value}
                       className={cn(
-                        "flex items-center justify-center gap-2 rounded-[8px] border px-3 py-2 text-sm font-bold transition",
+                        "flex items-center justify-center gap-1.5 rounded-[7px] border px-2 py-1.5 text-xs font-bold transition",
                         active
                           ? "border-fern bg-fern text-white"
                           : "border-ink/10 bg-white text-ink/70 hover:bg-chalk"
@@ -125,9 +125,9 @@ export function LayoutEditor() {
                   );
                 })}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {selectedSeat.attributes.map((attribute) => (
-                  <span key={attribute} className="rounded-[4px] bg-marigold/15 px-2 py-1 text-xs font-bold text-marigold">
+                  <span key={attribute} className="rounded-[4px] bg-marigold/15 px-1.5 py-0.5 text-[11px] font-bold text-marigold">
                     {seatAttributeLabels[attribute]}
                   </span>
                 ))}
@@ -137,15 +137,15 @@ export function LayoutEditor() {
         </div>
       </aside>
 
-      <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-bold text-white">
+      <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+        <div className="mb-2 flex items-center justify-center gap-1.5 rounded-[7px] bg-ink px-3 py-2 text-xs font-bold text-white">
           <PanelTop className="h-4 w-4" />
           讲台：{podiumOptions.find((option) => option.value === classroom.layout.podium)?.label}
         </div>
-        <div className="overflow-x-auto pb-2">
+        <div className="overflow-x-auto pb-1">
           <div
-            className="grid min-w-[680px] gap-2"
-            style={{ gridTemplateColumns: `repeat(${classroom.layout.columns}, minmax(72px, 1fr))` }}
+            className="grid min-w-[560px] gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${classroom.layout.columns}, minmax(60px, 1fr))` }}
           >
             {classroom.layout.seats.map((seat) => {
               const selected = seat.id === selectedSeat?.id;
@@ -155,21 +155,26 @@ export function LayoutEditor() {
                   type="button"
                   key={seat.id}
                   className={cn(
-                    "min-h-[82px] rounded-[8px] border p-2 text-left transition",
+                    "min-h-[66px] rounded-[7px] border p-1.5 text-left transition",
                     selected ? "border-fern bg-chalk shadow-sm" : "border-ink/10 bg-paper hover:border-fern/60",
                     empty && "border-dashed bg-stone-100 text-ink/35"
                   )}
                   onClick={() => setSelectedSeatId(seat.id)}
                 >
-                  <div className="text-xs font-bold text-ink/55">
+                  <div className="text-[11px] font-bold text-ink/55">
                     {seat.row}-{seat.column}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {seat.attributes.slice(0, 3).map((attribute) => (
-                      <span key={attribute} className="rounded-[4px] bg-white px-1.5 py-0.5 text-[10px] font-bold text-ink/55">
+                  <div className="mt-1.5 flex flex-wrap gap-0.5">
+                    {seat.attributes.slice(0, 2).map((attribute) => (
+                      <span key={attribute} className="rounded-[3px] bg-white px-1 py-0.5 text-[9px] font-bold leading-none text-ink/55">
                         {seatAttributeLabels[attribute]}
                       </span>
                     ))}
+                    {seat.attributes.length > 2 ? (
+                      <span className="rounded-[3px] bg-white px-1 py-0.5 text-[9px] font-bold leading-none text-ink/45">
+                        +{seat.attributes.length - 2}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               );

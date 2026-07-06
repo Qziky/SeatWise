@@ -14,20 +14,20 @@ export function GeneratorPanel() {
   const [note, setNote] = useState("");
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm no-print">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="space-y-3">
+      <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm no-print">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-bold text-ink">生成方案</h2>
-            <p className="mt-1 text-sm text-ink/60">
+            <h2 className="text-base font-bold text-ink">生成方案</h2>
+            <p className="mt-0.5 text-xs text-ink/60">
               {state.classroom.students.length} 名学生 · {state.classroom.layout.rows} 行 {state.classroom.layout.columns} 列
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <ViewModeToggle value={state.viewMode} onChange={state.setViewMode} />
             <button
               type="button"
-              className="flex items-center gap-2 rounded-[8px] bg-fern px-4 py-2 font-bold text-white hover:bg-fern/90"
+              className="flex items-center gap-1.5 rounded-[7px] bg-fern px-3 py-1.5 text-sm font-bold text-white hover:bg-fern/90"
               onClick={state.generatePlans}
             >
               <Sparkles className="h-4 w-4" />
@@ -35,7 +35,7 @@ export function GeneratorPanel() {
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-[8px] border border-ink/10 bg-white px-4 py-2 font-bold text-ink hover:bg-chalk"
+              className="flex items-center gap-1.5 rounded-[7px] border border-ink/10 bg-white px-3 py-1.5 text-sm font-bold text-ink hover:bg-chalk"
               onClick={state.regenerateUnlocked}
               disabled={!selectedPlan}
             >
@@ -47,13 +47,13 @@ export function GeneratorPanel() {
       </div>
 
       {state.plans.length ? (
-        <div className="grid gap-3 md:grid-cols-3 no-print">
+        <div className="grid gap-2 md:grid-cols-3 no-print">
           {state.plans.map((plan) => (
             <button
               type="button"
               key={plan.id}
               className={cn(
-                "rounded-[8px] border p-4 text-left transition",
+                "rounded-[8px] border p-3 text-left transition",
                 plan.id === state.selectedPlanId
                   ? "border-fern bg-chalk shadow-sm"
                   : "border-ink/10 bg-white hover:border-fern/50"
@@ -61,11 +61,11 @@ export function GeneratorPanel() {
               onClick={() => state.selectPlan(plan.id)}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-base font-bold text-ink">{plan.name}</span>
-                <span className="rounded-[6px] bg-ink px-2 py-1 text-sm font-bold text-white">{plan.score.total}</span>
+                <span className="text-sm font-bold text-ink">{plan.name}</span>
+                <span className="rounded-[5px] bg-ink px-1.5 py-0.5 text-xs font-bold text-white">{plan.score.total}</span>
               </div>
               {state.viewMode === "teacher" ? (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 grid gap-2 lg:grid-cols-2">
                   <ScoreBar label="视力" value={plan.score.health} />
                   <ScoreBar
                     label="纪律"
@@ -79,8 +79,8 @@ export function GeneratorPanel() {
         </div>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm print-surface">
+      <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-2 shadow-sm print-surface md:p-3">
           {selectedPlan ? (
             <SeatingBoard
               classroom={state.classroom}
@@ -91,12 +91,12 @@ export function GeneratorPanel() {
               onToggleStudentLock={state.toggleStudentLock}
             />
           ) : (
-            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[8px] border border-dashed border-ink/20 bg-paper text-center">
-              <Sparkles className="mb-4 h-10 w-10 text-fern" />
-              <div className="text-lg font-bold text-ink">等待生成座位方案</div>
+            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[8px] border border-dashed border-ink/20 bg-paper text-center">
+              <Sparkles className="mb-3 h-8 w-8 text-fern" />
+              <div className="text-base font-bold text-ink">等待生成座位方案</div>
               <button
                 type="button"
-                className="mt-4 rounded-[8px] bg-fern px-4 py-2 font-bold text-white hover:bg-fern/90"
+                className="mt-3 rounded-[7px] bg-fern px-3 py-1.5 text-sm font-bold text-white hover:bg-fern/90"
                 onClick={state.generatePlans}
               >
                 生成 3 个候选方案
@@ -105,13 +105,13 @@ export function GeneratorPanel() {
           )}
         </div>
 
-        <aside className="space-y-4 no-print">
+        <aside className="space-y-3 no-print">
           {state.viewMode === "teacher" ? (
             <>
-              <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-base font-bold text-ink">方案评分</h3>
+              <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-sm font-bold text-ink">方案评分</h3>
                 {selectedPlan ? (
-                  <div className="space-y-3">
+                  <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-1">
                     <ScoreBar label="总分" value={selectedPlan.score.total} tone="marigold" />
                     <ScoreBar label="视力照顾" value={selectedPlan.score.health} />
                     <ScoreBar label="身高遮挡" value={selectedPlan.score.height} />
@@ -125,33 +125,33 @@ export function GeneratorPanel() {
                 )}
               </div>
 
-              <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-ink">
+              <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-ink">
                   <AlertTriangle className="h-4 w-4 text-coral" />
                   冲突提示
                 </h3>
                 {selectedPlan?.warnings.length ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {selectedPlan.warnings.map((warning) => (
-                      <li key={warning} className="rounded-[8px] bg-coral/10 p-3 text-sm font-semibold text-coral">
+                      <li key={warning} className="rounded-[7px] bg-coral/10 p-2 text-xs font-semibold text-coral">
                         {warning}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-[8px] bg-chalk p-3 text-sm font-bold text-fern">
+                  <div className="flex items-center gap-1.5 rounded-[7px] bg-chalk p-2 text-xs font-bold text-fern">
                     <CheckCircle2 className="h-4 w-4" />
                     暂无明显冲突
                   </div>
                 )}
               </div>
 
-              <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-base font-bold text-ink">复核提示</h3>
+              <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-sm font-bold text-ink">复核提示</h3>
                 {selectedPlan?.reviewTips.length ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {selectedPlan.reviewTips.map((tip) => (
-                      <li key={tip} className="rounded-[8px] bg-paper p-3 text-sm text-ink/70">
+                      <li key={tip} className="rounded-[7px] bg-paper p-2 text-xs text-ink/70">
                         {tip}
                       </li>
                     ))}
@@ -161,20 +161,20 @@ export function GeneratorPanel() {
                 )}
               </div>
 
-              <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-ink">
+              <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-ink">
                   <Save className="h-4 w-4 text-marigold" />
                   保存版本
                 </h3>
                 <textarea
-                  className="min-h-24 w-full rounded-[8px] border border-ink/10 px-3 py-2 text-sm"
+                  className="min-h-16 w-full rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
                   placeholder="调整说明"
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                 />
                 <button
                   type="button"
-                  className="mt-3 w-full rounded-[8px] bg-marigold px-4 py-2 font-bold text-white hover:bg-marigold/90"
+                  className="mt-2 w-full rounded-[7px] bg-marigold px-3 py-1.5 text-sm font-bold text-white hover:bg-marigold/90"
                   disabled={!selectedPlan}
                   onClick={() => {
                     state.saveSelectedPlan(note);
@@ -186,9 +186,9 @@ export function GeneratorPanel() {
               </div>
             </>
           ) : (
-            <div className="rounded-[8px] border border-ink/10 bg-white p-4 shadow-sm">
-              <h3 className="mb-2 text-base font-bold text-ink">公开视图</h3>
-              <p className="text-sm leading-6 text-ink/65">当前仅展示姓名、学号和性别。</p>
+            <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+              <h3 className="mb-1 text-sm font-bold text-ink">公开视图</h3>
+              <p className="text-xs leading-5 text-ink/65">当前仅展示姓名、学号和性别。</p>
             </div>
           )}
         </aside>
