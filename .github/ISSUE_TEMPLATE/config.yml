@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全问题
+    url: https://docs.github.com/en/code-security/security-advisories
+    about: 请优先使用 GitHub Security Advisory 私下报告安全问题；不要在公开 issue 中披露漏洞细节。
