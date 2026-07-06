@@ -4,7 +4,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createId } from "@/lib/id";
 import { createGridLayout, toggleSeatAttribute as toggleAttribute } from "@/lib/layout";
-import { applyRuleTemplate, defaultRuleConfig } from "@/lib/rules";
+import { applyRuleTemplate, defaultRuleConfig, normalizeRuleConfig } from "@/lib/rules";
+import { normalizeRotationPolicy } from "@/lib/rotation";
 import { initialClassroom, initialHistory, sampleRules } from "@/lib/sample-data";
 import {
   evaluatePlan,
@@ -15,6 +16,7 @@ import type {
   ClassRoom,
   PodiumDirection,
   RelationshipRuleType,
+  RotationPolicy,
   RuleTemplate,
   SeatAttribute,
   SeatingPlan,
@@ -24,6 +26,7 @@ import type {
 } from "@/lib/types";
 
 type ActiveSection = "overview" | "students" | "layout" | "rules" | "generate" | "history" | "export";
+type RuleFlag = "visionPriority" | "heightBlocking" | "genderMix" | "fairnessRotation" | "avoidDesk";
 
 interface SeatWiseState {
   classroom: ClassRoom;
@@ -44,7 +47,8 @@ interface SeatWiseState {
   updatePodium: (podium: PodiumDirection) => void;
   toggleSeatAttribute: (seatId: string, attribute: SeatAttribute) => void;
   toggleSeatLock: (seatId: string) => void;
-  updateRuleFlag: (key: keyof Omit<SeatingRuleConfig, "template" | "relationships">, value: boolean) => void;
+  updateRuleFlag: (key: RuleFlag, value: boolean) => void;
+  updateRotationPolicy: (patch: Partial<RotationPolicy>) => void;
   applyTemplate: (template: RuleTemplate) => void;
   addRelationship: (studentAId: string, studentBId: string, type: RelationshipRuleType, note: string) => void;
   removeRelationship: (relationshipId: string) => void;
@@ -56,6 +60,11 @@ interface SeatWiseState {
   saveSelectedPlan: (adjustmentNote: string) => void;
   setViewMode: (mode: ViewMode) => void;
 }
+
+type PersistedSeatWiseState = Pick<
+  SeatWiseState,
+  "classroom" | "rules" | "plans" | "selectedPlanId" | "history" | "viewMode" | "activeSection"
+>;
 
 export const useSeatWiseStore = create<SeatWiseState>()(
   persist(
@@ -192,6 +201,16 @@ export const useSeatWiseStore = create<SeatWiseState>()(
             [key]: value
           }
         })),
+      updateRotationPolicy: (patch) =>
+        set((state) => ({
+          rules: {
+            ...state.rules,
+            rotationPolicy: normalizeRotationPolicy({
+              ...state.rules.rotationPolicy,
+              ...patch
+            })
+          }
+        })),
       applyTemplate: (template) =>
         set((state) => ({
           rules: applyRuleTemplate(state.rules, template)
@@ -324,6 +343,15 @@ export const useSeatWiseStore = create<SeatWiseState>()(
     }),
     {
       name: "seatwise-mvp",
+      version: 2,
+      migrate: (persistedState) => normalizePersistedState(persistedState as Partial<PersistedSeatWiseState> | undefined),
+      merge: (persistedState, currentState) => {
+        const persisted = normalizePersistedState(persistedState as Partial<PersistedSeatWiseState> | undefined);
+        return {
+          ...currentState,
+          ...persisted
+        };
+      },
       partialize: (state) => ({
         classroom: state.classroom,
         rules: state.rules,
@@ -339,6 +367,21 @@ export const useSeatWiseStore = create<SeatWiseState>()(
 
 export const getSelectedPlan = (state: SeatWiseState) =>
   state.plans.find((plan) => plan.id === state.selectedPlanId) ?? null;
+
+function normalizePersistedState(state?: Partial<PersistedSeatWiseState>): PersistedSeatWiseState {
+  return {
+    classroom: state?.classroom ?? initialClassroom,
+    rules: normalizeRuleConfig(state?.rules),
+    plans: state?.plans ?? [],
+    selectedPlanId: state?.selectedPlanId ?? null,
+    history: state?.history?.map((entry) => ({
+      ...entry,
+      rules: normalizeRuleConfig(entry.rules)
+    })) ?? initialHistory,
+    viewMode: state?.viewMode ?? "teacher",
+    activeSection: state?.activeSection ?? "overview"
+  };
+}
 
 export function createBlankStudent(): Omit<Student, "id"> {
   return {

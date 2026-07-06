@@ -10,6 +10,13 @@ import {
   isFrontHalf,
   isNearSeat
 } from "@/lib/layout";
+import {
+  getRotationDeviationTips,
+  getRotationMatchStats,
+  getRotationTargets,
+  normalizeRotationPolicy
+} from "@/lib/rotation";
+import type { RotationTarget } from "@/lib/rotation";
 import type {
   ClassroomLayout,
   HistoryEntry,
@@ -54,6 +61,11 @@ export function generateSeatingCandidates(input: GenerateSeatingInput): SeatingP
   const studentsById = new Map(input.students.map((student) => [student.id, student]));
   const remainingStudents = input.students.filter((student) => !lockedStudentIds.has(student.id));
   const remainingSeats = activeSeats.filter((seat) => !lockedSeatIds.has(seat.id));
+  const rotationTargets = getRotationTargets({
+    history: input.history,
+    layout: input.layout,
+    policy: input.rules.rotationPolicy
+  });
   const plans: SeatingPlan[] = [];
 
   for (let attempt = 0; attempt < Math.max(count * 4, 12); attempt += 1) {
@@ -78,6 +90,7 @@ export function generateSeatingCandidates(input: GenerateSeatingInput): SeatingP
         layout: input.layout,
         rules: input.rules,
         history: input.history,
+        rotationTargets,
         seed: attempt * 31 + seatIndex
       });
 
@@ -138,7 +151,7 @@ export function evaluatePlan(
   const height = scoreHeight(input.students, seatByStudent, input.layout, input.rules);
   const discipline = scoreDiscipline(assignments, input.layout, input.rules);
   const gender = scoreGender(assignments, input.layout, studentsById, input.rules);
-  const fairness = scoreFairness(input.students, seatByStudent, input.layout, input.history, input.rules);
+  const fairness = scoreFairness(input.students, assignments, seatByStudent, input.layout, input.history, input.rules);
   const balance = scoreBalance(assignments, input.layout, studentsById);
   const weights = templateWeights[input.rules.template];
   const total = Math.round(
@@ -161,13 +174,13 @@ export function evaluatePlan(
   if (input.rules.heightBlocking) satisfied.push(`身高遮挡评分 ${height} 分`);
   if (input.rules.avoidDesk) satisfied.push(`同桌关系评分 ${discipline} 分`);
   if (input.rules.genderMix) satisfied.push(`男女搭配评分 ${gender} 分`);
-  if (input.rules.fairnessRotation) satisfied.push(`公平轮换评分 ${fairness} 分`);
+  if (input.rules.fairnessRotation) satisfied.push(`轮换公平评分 ${fairness} 分`);
 
   return {
     score: { total, health, height, discipline, gender, fairness, balance },
     satisfied,
     warnings: uniqueMessages(warnings),
-    reviewTips: buildReviewTips(input.students, seatByStudent, input.layout, input.history)
+    reviewTips: buildReviewTips(input.students, assignments, seatByStudent, input.layout, input.history, input.rules)
   };
 }
 
@@ -274,6 +287,7 @@ function chooseStudentForSeat(args: {
   layout: ClassroomLayout;
   rules: SeatingRuleConfig;
   history: HistoryEntry[];
+  rotationTargets: Map<string, RotationTarget>;
   seed: number;
 }) {
   const random = seededRandom(args.seed);
@@ -281,11 +295,34 @@ function chooseStudentForSeat(args: {
     student,
     score:
       scoreStudentSeat(student, args.seat, args.assignments, args.layout, args.rules, args.history) +
+      scoreRotationTarget(student, args.seat, args.rules, args.rotationTargets) +
       random() * 8
   }));
 
   scores.sort((a, b) => b.score - a.score);
   return scores[0].student;
+}
+
+function scoreRotationTarget(
+  student: Student,
+  seat: SeatCell,
+  rules: SeatingRuleConfig,
+  rotationTargets: Map<string, RotationTarget>
+) {
+  if (!rules.fairnessRotation) return 0;
+  const policy = normalizeRotationPolicy(rules.rotationPolicy);
+  if (!policy.enabled || rotationTargets.size === 0) return 0;
+
+  const target = rotationTargets.get(student.id);
+  const targetSeatOwner = Array.from(rotationTargets.values()).find((item) => item.targetSeatId === seat.id);
+  const targetBonus = policy.strictness === "policy-first" ? 140 : 80;
+  const displacedPenalty = policy.strictness === "policy-first" ? -70 : -36;
+  const missedPenalty = policy.strictness === "policy-first" ? -30 : -14;
+
+  if (target?.targetSeatId === seat.id) return targetBonus;
+  if (targetSeatOwner && targetSeatOwner.studentId !== student.id) return displacedPenalty;
+  if (target) return missedPenalty;
+  return 0;
 }
 
 function scoreStudentSeat(
@@ -427,16 +464,31 @@ function scoreGender(
 
 function scoreFairness(
   students: Student[],
+  assignments: Record<string, string | null>,
   seatByStudent: Map<string, SeatCell>,
   layout: ClassroomLayout,
   history: HistoryEntry[],
   rules: SeatingRuleConfig
 ) {
   if (!rules.fairnessRotation) return 100;
+  const policy = normalizeRotationPolicy(rules.rotationPolicy);
+  const rotationStats = policy.enabled
+    ? getRotationMatchStats({
+        assignments,
+        history,
+        layout,
+        policy
+      })
+    : null;
   const risks = getFairnessRisks(history, layout, students);
-  if (risks.size === 0) return 92;
+  if (risks.size === 0 && (!rotationStats || rotationStats.total === 0)) return 92;
 
   let penalty = 0;
+  if (rotationStats && rotationStats.total > 0) {
+    const weight = policy.strictness === "policy-first" ? 70 : 45;
+    penalty += Math.round((1 - rotationStats.rate / 100) * weight);
+  }
+
   risks.forEach((reasons, studentId) => {
     const seat = seatByStudent.get(studentId);
     if (!seat) return;
@@ -543,12 +595,21 @@ function heightWarnings(
 
 function buildReviewTips(
   students: Student[],
+  assignments: Record<string, string | null>,
   seatByStudent: Map<string, SeatCell>,
   layout: ClassroomLayout,
-  history: HistoryEntry[]
+  history: HistoryEntry[],
+  rules: SeatingRuleConfig
 ) {
   const risks = getFairnessRisks(history, layout, students);
-  const tips: string[] = [];
+  const tips: string[] = getRotationDeviationTips({
+    assignments,
+    history,
+    layout,
+    policy: rules.rotationPolicy,
+    students,
+    limit: 4
+  });
 
   risks.forEach((reasons, studentId) => {
     const student = students.find((item) => item.id === studentId);

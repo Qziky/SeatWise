@@ -25,6 +25,32 @@ export type ViewMode = "teacher" | "student" | "print";
 
 export type ExportFormat = "pdf" | "image" | "excel";
 
+export type RotationPattern = "vertical" | "horizontal" | "diagonal" | "serpentine";
+
+export type RotationDirection =
+  | "forward"
+  | "backward"
+  | "left"
+  | "right"
+  | "down-right"
+  | "down-left"
+  | "up-right"
+  | "up-left";
+
+export type RotationStrictness = "policy-first" | "balanced";
+
+export interface RotationPolicy {
+  enabled: boolean;
+  pattern: RotationPattern;
+  direction: RotationDirection;
+  rounds: number;
+  periodDays: number;
+  stepRows: number;
+  stepColumns: number;
+  strictness: RotationStrictness;
+  skipEmptySeats: boolean;
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -77,6 +103,7 @@ export interface SeatingRuleConfig {
   heightBlocking: boolean;
   genderMix: boolean;
   fairnessRotation: boolean;
+  rotationPolicy: RotationPolicy;
   avoidDesk: boolean;
   relationships: RelationshipRule[];
 }

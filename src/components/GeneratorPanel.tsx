@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle2, RefreshCw, Save, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { describeRotationPolicy, getRotationMatchStats, normalizeRotationPolicy } from "@/lib/rotation";
 import { getSelectedPlan, useSeatWiseStore } from "@/store/useSeatWiseStore";
 import { ScoreBar } from "@/components/ScoreBar";
 import { SeatingBoard } from "@/components/SeatingBoard";
@@ -12,6 +13,20 @@ export function GeneratorPanel() {
   const state = useSeatWiseStore();
   const selectedPlan = getSelectedPlan(state);
   const [note, setNote] = useState("");
+  const rotationPolicy = normalizeRotationPolicy(state.rules.rotationPolicy);
+  const rotationStats = selectedPlan
+    ? getRotationMatchStats({
+        assignments: selectedPlan.assignments,
+        history: state.history,
+        layout: state.classroom.layout,
+        policy: rotationPolicy
+      })
+    : null;
+  const rotationMatchText = rotationStats
+    ? rotationStats.total
+      ? `${rotationStats.matched}/${rotationStats.total}（${rotationStats.rate}%）`
+      : "保存历史后生效"
+    : "暂无方案";
 
   return (
     <section className="space-y-3">
@@ -20,7 +35,8 @@ export function GeneratorPanel() {
           <div>
             <h2 className="text-base font-bold text-ink">生成方案</h2>
             <p className="mt-0.5 text-xs text-ink/60">
-              {state.classroom.students.length} 名学生 · {state.classroom.layout.rows} 行 {state.classroom.layout.columns} 列
+              {state.classroom.students.length} 名学生 · {state.classroom.layout.rows} 行 {state.classroom.layout.columns} 列 ·{" "}
+              {describeRotationPolicy(rotationPolicy)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -117,12 +133,20 @@ export function GeneratorPanel() {
                     <ScoreBar label="身高遮挡" value={selectedPlan.score.height} />
                     <ScoreBar label="纪律风险" value={selectedPlan.score.discipline} />
                     <ScoreBar label="男女搭配" value={selectedPlan.score.gender} />
-                    <ScoreBar label="公平轮换" value={selectedPlan.score.fairness} />
+                    <ScoreBar label="轮换公平" value={selectedPlan.score.fairness} />
+                    <ScoreBar label="目标匹配" value={rotationStats?.rate ?? 100} />
                     <ScoreBar label="小组均衡" value={selectedPlan.score.balance} />
                   </div>
                 ) : (
                   <p className="text-sm text-ink/60">暂无评分</p>
                 )}
+              </div>
+
+              <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+                <h3 className="mb-2 text-sm font-bold text-ink">本轮轮换</h3>
+                <div className="rounded-[7px] bg-chalk p-2 text-xs font-bold text-fern">
+                  {describeRotationPolicy(rotationPolicy)} · 目标匹配 {rotationMatchText}
+                </div>
               </div>
 
               <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">

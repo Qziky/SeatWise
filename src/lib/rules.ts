@@ -1,4 +1,5 @@
 import type { RuleTemplate, SeatingRuleConfig } from "@/lib/types";
+import { defaultRotationPolicy, normalizeRotationPolicy } from "@/lib/rotation";
 
 export const defaultRuleConfig: SeatingRuleConfig = {
   template: "vision",
@@ -6,15 +7,25 @@ export const defaultRuleConfig: SeatingRuleConfig = {
   heightBlocking: true,
   genderMix: true,
   fairnessRotation: true,
+  rotationPolicy: defaultRotationPolicy,
   avoidDesk: true,
   relationships: []
 };
+
+export function normalizeRuleConfig(rules?: Partial<SeatingRuleConfig> | null): SeatingRuleConfig {
+  return {
+    ...defaultRuleConfig,
+    ...(rules ?? {}),
+    rotationPolicy: normalizeRotationPolicy(rules?.rotationPolicy),
+    relationships: rules?.relationships ?? []
+  };
+}
 
 export function applyRuleTemplate(
   current: SeatingRuleConfig,
   template: RuleTemplate
 ): SeatingRuleConfig {
-  const base = { ...current, template };
+  const base = { ...normalizeRuleConfig(current), template };
 
   if (template === "vision") {
     return {

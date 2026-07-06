@@ -1,9 +1,24 @@
 "use client";
 
-import { GitFork, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { GitFork, Plus, RotateCw, SlidersHorizontal, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import type { RelationshipRuleType, RuleTemplate } from "@/lib/types";
+import {
+  getDefaultRotationDirection,
+  getRotationDirections,
+  normalizeRotationPolicy,
+  rotationDirectionLabels,
+  rotationPatternLabels,
+  rotationStrictnessLabels
+} from "@/lib/rotation";
+import type {
+  RelationshipRuleType,
+  RotationDirection,
+  RotationPattern,
+  RotationStrictness,
+  RuleTemplate
+} from "@/lib/types";
 import { ruleTemplateLabels } from "@/lib/types";
 import { useSeatWiseStore } from "@/store/useSeatWiseStore";
 
@@ -19,6 +34,7 @@ export function RuleConfigurator() {
   const classroom = useSeatWiseStore((state) => state.classroom);
   const rules = useSeatWiseStore((state) => state.rules);
   const updateRuleFlag = useSeatWiseStore((state) => state.updateRuleFlag);
+  const updateRotationPolicy = useSeatWiseStore((state) => state.updateRotationPolicy);
   const applyTemplate = useSeatWiseStore((state) => state.applyTemplate);
   const addRelationship = useSeatWiseStore((state) => state.addRelationship);
   const removeRelationship = useSeatWiseStore((state) => state.removeRelationship);
@@ -27,6 +43,8 @@ export function RuleConfigurator() {
   const [type, setType] = useState<RelationshipRuleType>("avoid-desk");
   const [note, setNote] = useState("");
   const studentById = new Map(classroom.students.map((student) => [student.id, student]));
+  const rotationPolicy = normalizeRotationPolicy(rules.rotationPolicy);
+  const directionOptions = getRotationDirections(rotationPolicy.pattern);
 
   return (
     <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -83,6 +101,91 @@ export function RuleConfigurator() {
               label="避免同桌"
               checked={rules.avoidDesk}
               onChange={(value) => updateRuleFlag("avoidDesk", value)}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-ink">
+            <RotateCw className="h-4 w-4 text-fern" />
+            轮换制度
+          </h3>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <RuleSwitch
+              label="启用轮换"
+              checked={rotationPolicy.enabled}
+              onChange={(value) => updateRotationPolicy({ enabled: value })}
+            />
+            <LabeledNumber
+              label="目标轮次"
+              min={0}
+              value={rotationPolicy.rounds}
+              onChange={(value) => updateRotationPolicy({ rounds: value })}
+            />
+            <LabeledSelect
+              label="轮换模式"
+              value={rotationPolicy.pattern}
+              onChange={(value) => {
+                const pattern = value as RotationPattern;
+                updateRotationPolicy({
+                  pattern,
+                  direction: getDefaultRotationDirection(pattern)
+                });
+              }}
+            >
+              {(Object.keys(rotationPatternLabels) as RotationPattern[]).map((pattern) => (
+                <option key={pattern} value={pattern}>
+                  {rotationPatternLabels[pattern]}
+                </option>
+              ))}
+            </LabeledSelect>
+            <LabeledSelect
+              label="方向"
+              value={rotationPolicy.direction}
+              onChange={(value) => updateRotationPolicy({ direction: value as RotationDirection })}
+            >
+              {directionOptions.map((direction) => (
+                <option key={direction} value={direction}>
+                  {rotationDirectionLabels[direction]}
+                </option>
+              ))}
+            </LabeledSelect>
+            <LabeledNumber
+              label="周期天数"
+              min={1}
+              max={60}
+              value={rotationPolicy.periodDays}
+              onChange={(value) => updateRotationPolicy({ periodDays: value })}
+            />
+            <LabeledNumber
+              label="行步长"
+              min={1}
+              max={12}
+              value={rotationPolicy.stepRows}
+              onChange={(value) => updateRotationPolicy({ stepRows: value })}
+            />
+            <LabeledNumber
+              label="列步长"
+              min={1}
+              max={12}
+              value={rotationPolicy.stepColumns}
+              onChange={(value) => updateRotationPolicy({ stepColumns: value })}
+            />
+            <LabeledSelect
+              label="严格度"
+              value={rotationPolicy.strictness}
+              onChange={(value) => updateRotationPolicy({ strictness: value as RotationStrictness })}
+            >
+              {(Object.keys(rotationStrictnessLabels) as RotationStrictness[]).map((strictness) => (
+                <option key={strictness} value={strictness}>
+                  {rotationStrictnessLabels[strictness]}
+                </option>
+              ))}
+            </LabeledSelect>
+            <RuleSwitch
+              label="跳过空座"
+              checked={rotationPolicy.skipEmptySeats}
+              onChange={(value) => updateRotationPolicy({ skipEmptySeats: value })}
             />
           </div>
         </div>
@@ -172,6 +275,59 @@ export function RuleConfigurator() {
         </div>
       </aside>
     </section>
+  );
+}
+
+function LabeledSelect({
+  label,
+  value,
+  onChange,
+  children
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid gap-1 rounded-[7px] border border-ink/10 bg-paper px-3 py-2">
+      <span className="text-xs font-bold text-ink/60">{label}</span>
+      <select
+        className="min-h-8 rounded-[6px] border border-ink/10 bg-white px-2 text-sm font-bold text-ink"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function LabeledNumber({
+  label,
+  min,
+  max,
+  value,
+  onChange
+}: {
+  label: string;
+  min: number;
+  max?: number;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="grid gap-1 rounded-[7px] border border-ink/10 bg-paper px-3 py-2">
+      <span className="text-xs font-bold text-ink/60">{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        className="min-h-8 rounded-[6px] border border-ink/10 bg-white px-2 text-sm font-bold text-ink"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
   );
 }
 

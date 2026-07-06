@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, Clock3, UsersRound } from "lucide-react";
+import { AlertTriangle, Clock3, RotateCw, UsersRound } from "lucide-react";
+import { getRotationDeviationTips } from "@/lib/rotation";
 import { getFairnessRisks, getLongTermDeskMateRisks } from "@/lib/seating-engine";
 import { useSeatWiseStore } from "@/store/useSeatWiseStore";
 import { SeatingBoard } from "@/components/SeatingBoard";
@@ -13,6 +14,15 @@ export function HistoryPanel() {
   const deskMateRisks = getLongTermDeskMateRisks(history, classroom.layout);
   const studentsById = new Map(classroom.students.map((student) => [student.id, student]));
   const latest = history.at(-1);
+  const latestRotationDeviationTips = latest
+    ? getRotationDeviationTips({
+        assignments: latest.plan.assignments,
+        history: history.slice(0, -1),
+        layout: classroom.layout,
+        policy: latest.rules.rotationPolicy,
+        students: classroom.students
+      })
+    : [];
 
   return (
     <section className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -83,6 +93,26 @@ export function HistoryPanel() {
             </div>
           ) : (
             <div className="rounded-[7px] bg-chalk p-2 text-xs font-bold text-fern">暂无长期后排、边缘或同桌风险</div>
+          )}
+        </div>
+
+        <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-ink">
+            <RotateCw className="h-4 w-4 text-fern" />
+            轮换偏离
+          </h3>
+          {latestRotationDeviationTips.length ? (
+            <div className="space-y-1.5">
+              {latestRotationDeviationTips.map((tip) => (
+                <div key={tip} className="rounded-[7px] bg-paper p-2 text-xs font-semibold text-ink/70">
+                  {tip}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[7px] bg-chalk p-2 text-xs font-bold text-fern">
+              暂无最新方案的轮换偏离
+            </div>
           )}
         </div>
 
