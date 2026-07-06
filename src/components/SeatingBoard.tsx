@@ -11,12 +11,13 @@ import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
 import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
 import { seatAttributeLabels, visionLabels } from "@/lib/types";
 
-const seatAttributeDotClass: Record<Exclude<SeatAttribute, "empty">, string> = {
+type SeatAttributeDot = Exclude<SeatAttribute, "empty" | "edge">;
+
+const seatAttributeDotClass: Record<SeatAttributeDot, string> = {
   window: "bg-sky-500",
   door: "bg-violet-500",
   glare: "bg-marigold",
-  back: "bg-ink/45",
-  edge: "bg-fern"
+  back: "bg-ink/45"
 };
 
 const visionAccentClass: Record<VisionStatus, string> = {
@@ -139,6 +140,9 @@ export function SeatingBoard({
           const visibleAttributes = seat.attributes.filter(
             (attribute): attribute is Exclude<SeatAttribute, "empty"> => attribute !== "empty"
           );
+          const markerAttributes = visibleAttributes.filter(
+            (attribute): attribute is SeatAttributeDot => attribute !== "edge"
+          );
 
           return (
             <SeatDropCell
@@ -158,7 +162,7 @@ export function SeatingBoard({
                 className={cn(
                   "flex flex-col justify-between",
                   isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5",
-                  visibleAttributes.length && "pb-1.5"
+                  markerAttributes.length && "pb-1.5"
                 )}
                 title={mode === "teacher" ? getSeatAttributeTitle(seat.attributes) : undefined}
               >
@@ -187,7 +191,7 @@ export function SeatingBoard({
                   </div>
                 )}
 
-                {mode === "teacher" ? <SeatAttributeMarkers attributes={visibleAttributes} /> : null}
+                {mode === "teacher" ? <SeatAttributeMarkers attributes={markerAttributes} /> : null}
               </div>
             </SeatDropCell>
           );
@@ -262,7 +266,7 @@ function SeatDropCell({
         empty
           ? "border-dashed border-ink/15 bg-stone-100 text-ink/35"
           : "border-ink/10 bg-paper",
-        edge && !empty && "border-fern/35 bg-fern/[0.035]",
+        edge && !empty && "border-fern/45 bg-fern/[0.04] shadow-[inset_0_0_0_1px_rgba(36,132,105,0.12)]",
         glare && !empty && "bg-marigold/[0.035]",
         sensitive && "border-l-4",
         sensitive && visionAccentClass[student!.vision],
@@ -296,12 +300,11 @@ function SeatCellPatterns({ attributes }: { attributes: SeatAttribute[] }) {
       {attributes.includes("window") ? <div className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-sky-500/35" /> : null}
       {attributes.includes("door") ? <div className="absolute bottom-2 right-0 top-2 w-1 rounded-l-full bg-violet-500/35" /> : null}
       {attributes.includes("back") ? <div className="absolute bottom-0 left-2 right-2 h-1 rounded-t-full bg-ink/20" /> : null}
-      {attributes.includes("edge") ? <div className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-fern/35" /> : null}
     </div>
   );
 }
 
-function SeatAttributeMarkers({ attributes }: { attributes: Array<Exclude<SeatAttribute, "empty">> }) {
+function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeDot[] }) {
   if (!attributes.length) return <div className="min-h-3" />;
 
   return (
