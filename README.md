@@ -57,6 +57,7 @@ npm run typecheck  # TypeScript 类型检查
 npm test           # 运行测试
 npm run check      # lint + typecheck + test
 npm run ci         # check + build + 生产依赖审计
+npm run cleanup:windows # 清理 Windows 本地 Playwright/Next 残留进程和临时快照
 ```
 
 ## 项目结构

@@ -25,7 +25,8 @@
     "test:watch": "vitest",
     "audit:prod": "npm audit --omit=dev",
     "check": "npm run lint && npm run typecheck && npm test",
-    "ci": "npm run check && npm run build && npm run audit:prod"
+    "ci": "npm run check && npm run build && npm run audit:prod",
+    "cleanup:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local.ps1 -AllPlaywrightDaemons -RemoveArtifacts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
