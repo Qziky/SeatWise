@@ -11,8 +11,8 @@ import {
   EyeOff,
   HeartPulse,
   Lock,
-  Minus,
   PanelLeft,
+  Ruler,
   Rows3,
   ScanEye,
   Sun,
@@ -59,11 +59,13 @@ interface LegendItem {
   className: string;
   icon: LucideIcon;
   label: string;
+  shortLabel: string;
 }
 
 interface BorderLegendItem {
   className: string;
   label: string;
+  shortLabel: string;
 }
 
 const seatAttributeIconClass: Record<SeatAttributeMarker, string> = {
@@ -75,11 +77,11 @@ const seatAttributeIconClass: Record<SeatAttributeMarker, string> = {
 };
 
 const seatLegendItems: LegendItem[] = [
-  { label: "靠窗", icon: PanelLeft, className: seatAttributeIconClass.window },
-  { label: "靠门", icon: DoorOpen, className: seatAttributeIconClass.door },
-  { label: "反光", icon: Sun, className: seatAttributeIconClass.glare },
-  { label: "后排", icon: Rows3, className: seatAttributeIconClass.back },
-  { label: "边缘", icon: CornerDownRight, className: seatAttributeIconClass.edge }
+  { label: "靠窗", shortLabel: "窗", icon: PanelLeft, className: seatAttributeIconClass.window },
+  { label: "靠门", shortLabel: "门", icon: DoorOpen, className: seatAttributeIconClass.door },
+  { label: "反光", shortLabel: "光", icon: Sun, className: seatAttributeIconClass.glare },
+  { label: "后排", shortLabel: "后", icon: Rows3, className: seatAttributeIconClass.back },
+  { label: "边缘", shortLabel: "边", icon: CornerDownRight, className: seatAttributeIconClass.edge }
 ];
 
 const visionStatusIconClass: Record<VisionStatus, string> = {
@@ -90,38 +92,38 @@ const visionStatusIconClass: Record<VisionStatus, string> = {
 };
 
 const visionLegendItems: LegendItem[] = [
-  { label: "视力正常", icon: visionStatusIcons.normal, className: visionStatusIconClass.normal },
-  { label: "轻度关注", icon: visionStatusIcons.mild, className: visionStatusIconClass.mild },
-  { label: "重点照顾", icon: visionStatusIcons.severe, className: visionStatusIconClass.severe },
-  { label: "视力未填", icon: visionStatusIcons.unknown, className: visionStatusIconClass.unknown }
+  { label: "视力正常", shortLabel: "正", icon: visionStatusIcons.normal, className: visionStatusIconClass.normal },
+  { label: "轻度关注", shortLabel: "轻", icon: visionStatusIcons.mild, className: visionStatusIconClass.mild },
+  { label: "重点照顾", shortLabel: "重", icon: visionStatusIcons.severe, className: visionStatusIconClass.severe },
+  { label: "视力未填", shortLabel: "未", icon: visionStatusIcons.unknown, className: visionStatusIconClass.unknown }
 ];
 
 const heightLegendItems: LegendItem[] = [
-  { label: "偏高", icon: TrendingUp, className: "text-sky-600" },
-  { label: "偏矮", icon: TrendingDown, className: "text-fern" },
-  { label: "常规身高", icon: Minus, className: "text-ink/45" }
+  { label: "偏高", shortLabel: "高", icon: TrendingUp, className: "text-sky-600" },
+  { label: "偏矮", shortLabel: "矮", icon: TrendingDown, className: "text-fern" },
+  { label: "常规身高", shortLabel: "常", icon: Ruler, className: "text-ink/45" }
 ];
 
 const noteLegendItems: LegendItem[] = [
-  { label: "标签", icon: Tag, className: "text-sky-600" },
-  { label: "多标签", icon: Tags, className: "text-violet-600" },
-  { label: "特殊需求", icon: HeartPulse, className: "text-coral" },
-  { label: "已锁定", icon: Lock, className: "text-coral" }
+  { label: "标签", shortLabel: "标", icon: Tag, className: "text-sky-600" },
+  { label: "多标签", shortLabel: "多", icon: Tags, className: "text-violet-600" },
+  { label: "特殊需求", shortLabel: "特", icon: HeartPulse, className: "text-coral" },
+  { label: "已锁定", shortLabel: "锁", icon: Lock, className: "text-coral" }
 ];
 
 const seatBorderLegendItems: BorderLegendItem[] = [
-  { label: "蓝=靠窗", className: "border-sky-500/45 bg-sky-500/[0.04]" },
-  { label: "紫=靠门", className: "border-violet-500/45 bg-violet-500/[0.04]" },
-  { label: "黄=反光", className: "border-marigold bg-marigold/5" },
-  { label: "绿=边缘", className: "border-fern/55 bg-fern/[0.04]" },
-  { label: "灰=后排", className: "border-ink/25 bg-ink/[0.02]" }
+  { label: "蓝边=靠窗", shortLabel: "窗", className: "border-sky-500/45 bg-sky-500/[0.04]" },
+  { label: "紫边=靠门", shortLabel: "门", className: "border-violet-500/45 bg-violet-500/[0.04]" },
+  { label: "黄边=反光", shortLabel: "光", className: "border-marigold bg-marigold/5" },
+  { label: "绿边=边缘", shortLabel: "边", className: "border-fern/55 bg-fern/[0.04]" },
+  { label: "灰边=后排", shortLabel: "后", className: "border-ink/25 bg-ink/[0.02]" }
 ];
 
 const teacherBorderLegendItems: BorderLegendItem[] = [
-  { label: "左绿=正常", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
-  { label: "左黄=轻度", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
-  { label: "左红=重点", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
-  { label: "红框=锁定", className: "border-coral/55 bg-coral/5" }
+  { label: "左绿=视力正常", shortLabel: "正", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
+  { label: "左黄=轻度关注", shortLabel: "轻", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
+  { label: "左红=重点照顾", shortLabel: "重", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
+  { label: "红框=锁定", shortLabel: "锁", className: "border-coral/55 bg-coral/5" }
 ];
 
 interface DetailState {
@@ -139,7 +141,7 @@ interface DragState {
 function HeightIcon({ heightCm }: { heightCm: number }) {
   if (heightCm >= 165) return <TrendingUp className="h-3 w-3 text-sky-600" />;
   if (heightCm <= 150) return <TrendingDown className="h-3 w-3 text-fern" />;
-  return <Minus className="h-3 w-3 text-ink/45" />;
+  return <Ruler className="h-3 w-3 text-ink/45" />;
 }
 
 function getSeatAttributeTitle(attributes: SeatAttribute[]) {
@@ -734,7 +736,7 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
 
   return (
     <div
-      className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[10px] font-semibold leading-none text-ink/60 no-print"
+      className="mb-1.5 flex items-center gap-2 overflow-x-auto rounded-[7px] border border-ink/10 bg-paper px-2 py-1.5 text-[9px] font-semibold leading-none text-ink/60 no-print"
       style={{ minWidth }}
       aria-label="座位图标图例"
     >
@@ -754,12 +756,16 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
 
 function LegendGroup({ title, items }: { title: string; items: LegendItem[] }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex shrink-0 items-center gap-1">
       <span className="text-ink/40">{title}</span>
       {items.map((item) => (
-        <span key={item.label} className="flex items-center gap-0.5 whitespace-nowrap" title={item.label}>
+        <span
+          key={item.label}
+          className="flex items-center gap-0.5 whitespace-nowrap rounded-[4px] bg-white/55 px-1 py-0.5"
+          title={item.label}
+        >
           <LegendSwatch item={item} />
-          {item.label}
+          {item.shortLabel}
         </span>
       ))}
     </div>
@@ -774,12 +780,16 @@ function LegendSwatch({ item }: { item: LegendItem }) {
 
 function BorderLegendGroup({ title, items }: { title: string; items: BorderLegendItem[] }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex shrink-0 items-center gap-1">
       <span className="text-ink/40">{title}</span>
       {items.map((item) => (
-        <span key={item.label} className="flex items-center gap-0.5 whitespace-nowrap" title={item.label}>
+        <span
+          key={item.label}
+          className="flex items-center gap-0.5 whitespace-nowrap rounded-[4px] bg-white/55 px-1 py-0.5"
+          title={item.label}
+        >
           <span className={cn("h-3 w-4 shrink-0 rounded-[3px] border-2", item.className)} />
-          {item.label}
+          {item.shortLabel}
         </span>
       ))}
     </div>
