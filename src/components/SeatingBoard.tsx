@@ -11,8 +11,6 @@ import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
 import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
 import { seatAttributeLabels, visionLabels } from "@/lib/types";
 
-type SeatAttributeMarker = Exclude<SeatAttribute, "empty">;
-
 const visionAccentClass: Record<VisionStatus, string> = {
   normal: "border-l-fern/55 bg-white",
   mild: "border-l-marigold bg-marigold/5",
@@ -31,30 +29,6 @@ interface BorderLegendItem {
   label: string;
   shortLabel: string;
 }
-
-const seatAttributeMarkerClass: Record<SeatAttributeMarker, string> = {
-  window: "border-sky-500/45 bg-sky-500/10 text-sky-700",
-  door: "border-violet-500/45 bg-violet-500/10 text-violet-700",
-  glare: "border-marigold/45 bg-marigold/10 text-marigold",
-  back: "border-ink/20 bg-ink/[0.04] text-ink/65",
-  edge: "border-fern/45 bg-fern/10 text-fern"
-};
-
-const seatAttributeShortLabels: Record<SeatAttributeMarker, string> = {
-  window: "窗",
-  door: "门",
-  glare: "光",
-  back: "后",
-  edge: "边"
-};
-
-const seatLegendItems: LegendItem[] = [
-  { label: "靠窗", shortLabel: "窗", className: seatAttributeMarkerClass.window },
-  { label: "靠门", shortLabel: "门", className: seatAttributeMarkerClass.door },
-  { label: "反光", shortLabel: "光", className: seatAttributeMarkerClass.glare },
-  { label: "后排", shortLabel: "后", className: seatAttributeMarkerClass.back },
-  { label: "边缘", shortLabel: "边", className: seatAttributeMarkerClass.edge }
-];
 
 const visionStatusMarkerClass: Record<VisionStatus, string> = {
   normal: "border-fern/45 bg-fern/10 text-fern",
@@ -256,11 +230,6 @@ export function SeatingBoard({
           const student = studentId ? studentsById.get(studentId) ?? null : null;
           const seatLocked = Boolean(plan?.lockedSeatIds.includes(seat.id));
           const studentLocked = Boolean(student && plan?.lockedStudentIds.includes(student.id));
-          const visibleAttributes = seat.attributes.filter(
-            (attribute): attribute is Exclude<SeatAttribute, "empty"> => attribute !== "empty"
-          );
-          const markerAttributes = visibleAttributes;
-
           return (
             <SeatDropCell
               key={seat.id}
@@ -277,7 +246,6 @@ export function SeatingBoard({
             >
               <SeatCardContent
                 isTeacherMode={isTeacherMode}
-                markerAttributes={markerAttributes}
                 mode={mode}
                 seat={seat}
                 seatLocked={seatLocked}
@@ -452,7 +420,6 @@ function createDragPreviewAssignments(
 
 function SeatCardContent({
   isTeacherMode,
-  markerAttributes,
   mode,
   seat,
   seatLocked,
@@ -460,7 +427,6 @@ function SeatCardContent({
   studentLocked
 }: {
   isTeacherMode: boolean;
-  markerAttributes: SeatAttributeMarker[];
   mode: ViewMode;
   seat: SeatCell;
   seatLocked: boolean;
@@ -471,8 +437,7 @@ function SeatCardContent({
     <div
       className={cn(
         "flex flex-col justify-between",
-        isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5",
-        markerAttributes.length && "pb-1.5"
+        isTeacherMode ? "min-h-[88px] gap-1" : "min-h-[82px] gap-1.5"
       )}
       title={mode === "teacher" ? getSeatAttributeTitle(seat.attributes) : undefined}
     >
@@ -496,8 +461,6 @@ function SeatCardContent({
           {seat.attributes.includes("empty") ? "空座" : "待安排"}
         </div>
       )}
-
-      {mode === "teacher" ? <SeatAttributeMarkers attributes={markerAttributes} /> : null}
     </div>
   );
 }
@@ -514,9 +477,6 @@ function SeatDragOverlayCard({
   studentLocked: boolean;
 }) {
   const isTeacherMode = mode === "teacher";
-  const markerAttributes = seat.attributes.filter(
-    (attribute): attribute is SeatAttributeMarker => attribute !== "empty"
-  );
 
   return (
     <div
@@ -531,7 +491,6 @@ function SeatDragOverlayCard({
       <div className="relative z-10">
         <SeatCardContent
           isTeacherMode={isTeacherMode}
-          markerAttributes={markerAttributes}
           mode={mode}
           seat={seat}
           seatLocked={false}
@@ -552,23 +511,6 @@ function SeatCellPatterns({ attributes }: { attributes: SeatAttribute[] }) {
       {attributes.includes("window") ? <div className="absolute left-2 right-2 top-0 h-1 rounded-b-full bg-sky-500/35" /> : null}
       {attributes.includes("door") ? <div className="absolute bottom-2 right-0 top-2 w-1 rounded-l-full bg-violet-500/35" /> : null}
       {attributes.includes("back") ? <div className="absolute bottom-0 left-2 right-2 h-1 rounded-t-full bg-ink/20" /> : null}
-    </div>
-  );
-}
-
-function SeatAttributeMarkers({ attributes }: { attributes: SeatAttributeMarker[] }) {
-  if (!attributes.length) return <div className="min-h-3" />;
-
-  return (
-    <div className="flex min-h-3 items-center gap-0.5" aria-hidden="true">
-      {attributes.slice(0, 4).map((attribute) => (
-        <MiniTextBadge
-          key={attribute}
-          className={seatAttributeMarkerClass[attribute]}
-          label={seatAttributeLabels[attribute]}
-          shortLabel={seatAttributeShortLabels[attribute]}
-        />
-      ))}
     </div>
   );
 }
@@ -736,7 +678,6 @@ function SeatingLegend({ mode, minWidth }: { mode: ViewMode; minWidth: number })
       style={{ minWidth }}
       aria-label="座位图标图例"
     >
-      <LegendGroup title="座位" items={seatLegendItems} />
       <BorderLegendGroup title="座位边框" items={seatBorderLegendItems} />
       {mode === "teacher" ? (
         <>
