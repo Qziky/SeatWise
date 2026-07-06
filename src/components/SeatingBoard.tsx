@@ -5,7 +5,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Lock, Unlock, X } from "lucide-react";
 import { useState } from "react";
-import type { CSSProperties, MouseEvent } from "react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
 import type { ClassRoom, SeatingPlan, SeatAttribute, SeatCell, Student, ViewMode, VisionStatus } from "@/lib/types";
@@ -98,10 +98,12 @@ export function SeatingBoard({
   const selectedSeat = detail ? classroom.layout.seats.find((seat) => seat.id === detail.seatId) ?? null : null;
   const selectedStudentId = selectedSeat ? plan?.assignments[selectedSeat.id] ?? null : null;
   const selectedStudent = selectedStudentId ? studentsById.get(selectedStudentId) ?? null : null;
+  const selectedSeatLocked = Boolean(selectedSeat && plan?.lockedSeatIds.includes(selectedSeat.id));
+  const selectedStudentLocked = Boolean(selectedStudent && plan?.lockedStudentIds.includes(selectedStudent.id));
 
-  function handleOpenDetail(event: MouseEvent<HTMLDivElement>, seatId: string) {
+  function openDetailFromElement(element: HTMLElement, seatId: string) {
     if (mode === "print") return;
-    const rect = event.currentTarget.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
     const bubbleWidth = Math.min(280, window.innerWidth - 24);
     const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - bubbleWidth - 12));
     const below = rect.bottom + 8;
@@ -148,8 +150,9 @@ export function SeatingBoard({
               empty={seat.attributes.includes("empty")}
               attributes={seat.attributes}
               student={student}
+              studentLocked={studentLocked}
               selected={detail?.seatId === seat.id}
-              onOpenDetail={(event) => handleOpenDetail(event, seat.id)}
+              onOpenDetail={(element) => openDetailFromElement(element, seat.id)}
             >
               <div
                 className={cn(
@@ -163,19 +166,11 @@ export function SeatingBoard({
                   <span className="text-[10px] font-semibold leading-none text-ink/45">
                     {seat.row}-{seat.column}
                   </span>
-                  {onToggleSeatLock && mode === "teacher" && plan ? (
-                    <button
-                      type="button"
-                      title={seatLocked ? "取消锁定座位" : "锁定座位"}
-                      className={cn(
-                        "no-print rounded-[4px] p-0.5 transition hover:bg-ink/10",
-                        seatLocked ? "text-coral" : "text-ink/45"
-                      )}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={() => onToggleSeatLock(seat.id)}
-                    >
-                      {seatLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                    </button>
+                  {mode === "teacher" && (seatLocked || studentLocked) ? (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-coral"
+                      title={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
+                    />
                   ) : null}
                 </div>
 
@@ -185,7 +180,6 @@ export function SeatingBoard({
                     mode={mode}
                     locked={studentLocked}
                     disabled={readonly || mode === "print" || seatLocked || studentLocked}
-                    onToggleStudentLock={onToggleStudentLock}
                   />
                 ) : (
                   <div className="flex flex-1 items-center justify-center text-[11px] font-semibold text-ink/35">
@@ -204,7 +198,13 @@ export function SeatingBoard({
           seat={selectedSeat}
           student={selectedStudent}
           mode={mode}
+          seatLocked={selectedSeatLocked}
+          studentLocked={selectedStudentLocked}
           style={{ left: detail.left, top: detail.top }}
+          onToggleSeatLock={onToggleSeatLock ? () => onToggleSeatLock(selectedSeat.id) : undefined}
+          onToggleStudentLock={
+            onToggleStudentLock && selectedStudent ? () => onToggleStudentLock(selectedStudent.id) : undefined
+          }
           onClose={() => setDetail(null)}
         />
       ) : null}
@@ -228,6 +228,7 @@ function SeatDropCell({
   empty,
   attributes,
   student,
+  studentLocked,
   selected,
   onOpenDetail,
   children
@@ -239,8 +240,9 @@ function SeatDropCell({
   empty: boolean;
   attributes: SeatAttribute[];
   student: Student | null;
+  studentLocked: boolean;
   selected: boolean;
-  onOpenDetail: (event: MouseEvent<HTMLDivElement>) => void;
+  onOpenDetail: (element: HTMLDivElement) => void;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({
@@ -265,17 +267,17 @@ function SeatDropCell({
         sensitive && "border-l-4",
         sensitive && visionAccentClass[student!.vision],
         isOver && "border-fern bg-chalk",
-        locked && "border-coral/50 bg-coral/5",
+        (locked || studentLocked) && "border-coral/50 bg-coral/5",
         selected && "ring-2 ring-fern/45"
       )}
       title={mode === "teacher" ? getSeatAttributeTitle(attributes) : undefined}
       role="button"
       tabIndex={mode === "print" ? -1 : 0}
-      onClick={onOpenDetail}
+      onClick={(event) => onOpenDetail(event.currentTarget)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onOpenDetail(event as unknown as MouseEvent<HTMLDivElement>);
+          onOpenDetail(event.currentTarget);
         }
       }}
     >
@@ -319,14 +321,12 @@ function DraggableStudent({
   student,
   mode,
   locked,
-  disabled,
-  onToggleStudentLock
+  disabled
 }: {
   student: Student;
   mode: ViewMode;
   locked: boolean;
   disabled: boolean;
-  onToggleStudentLock?: (studentId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: student.id,
@@ -352,7 +352,7 @@ function DraggableStudent({
       )}
       title={getStudentTitle(student, sensitive)}
     >
-      <div className="pr-4">
+      <div>
         <div className="min-w-0">
           <div className="truncate whitespace-nowrap text-[13px] font-black leading-4 text-ink" title={visible.name}>
             {visible.name}
@@ -361,20 +361,6 @@ function DraggableStudent({
             {visible.studentNo} {visible.gender}
           </div>
         </div>
-        {onToggleStudentLock && mode === "teacher" ? (
-          <button
-            type="button"
-            title={locked ? "取消锁定学生" : "锁定学生"}
-            className={cn(
-              "no-print absolute right-1 top-1 rounded-[4px] p-0.5 transition hover:bg-ink/10",
-              locked ? "text-coral" : "text-ink/45"
-            )}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => onToggleStudentLock(student.id)}
-          >
-            {locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-          </button>
-        ) : null}
       </div>
 
       {sensitive ? <StudentStatusMarkers student={student} /> : null}
@@ -386,17 +372,26 @@ function SeatDetailBubble({
   seat,
   student,
   mode,
+  seatLocked,
+  studentLocked,
   style,
+  onToggleSeatLock,
+  onToggleStudentLock,
   onClose
 }: {
   seat: SeatCell;
   student: Student | null;
   mode: ViewMode;
+  seatLocked: boolean;
+  studentLocked: boolean;
   style: CSSProperties;
+  onToggleSeatLock?: () => void;
+  onToggleStudentLock?: () => void;
   onClose: () => void;
 }) {
   const sensitive = shouldShowSensitive(mode);
   const visibleAttributes = seat.attributes.filter((attribute) => attribute !== "empty");
+  const canToggleLocks = mode === "teacher" && (onToggleSeatLock || (student && onToggleStudentLock));
 
   return (
     <div
@@ -434,6 +429,37 @@ function SeatDetailBubble({
       ) : (
         <p className="text-xs leading-5 text-ink/60">当前座位尚未安排学生。</p>
       )}
+
+      {canToggleLocks ? (
+        <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-ink/10 pt-2">
+          {onToggleSeatLock ? (
+            <button
+              type="button"
+              className={cn(
+                "flex items-center justify-center gap-1 rounded-[6px] border px-2 py-1.5 text-xs font-bold",
+                seatLocked ? "border-coral/30 bg-coral/10 text-coral" : "border-ink/10 text-ink/65 hover:bg-chalk"
+              )}
+              onClick={onToggleSeatLock}
+            >
+              {seatLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+              {seatLocked ? "解锁座位" : "锁座位"}
+            </button>
+          ) : null}
+          {student && onToggleStudentLock ? (
+            <button
+              type="button"
+              className={cn(
+                "flex items-center justify-center gap-1 rounded-[6px] border px-2 py-1.5 text-xs font-bold",
+                studentLocked ? "border-coral/30 bg-coral/10 text-coral" : "border-ink/10 text-ink/65 hover:bg-chalk"
+              )}
+              onClick={onToggleStudentLock}
+            >
+              {studentLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+              {studentLocked ? "解锁学生" : "锁学生"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
