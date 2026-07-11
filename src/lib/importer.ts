@@ -1,5 +1,4 @@
-import { createId } from "@/lib/id";
-import type { Gender, ParsedStudentImport, Student, VisionStatus } from "@/lib/types";
+import type { Gender, ParsedStudentImport, Student, StudentDraft, VisionStatus } from "@/lib/types";
 
 const headerAliases: Record<string, keyof Student> = {
   姓名: "name",
@@ -46,11 +45,13 @@ export function parseStudentPaste(input: string): ParsedStudentImport {
 
   const firstColumns = splitRow(lines[0]);
   const mappedHeaders = firstColumns.map(mapHeader).filter(Boolean) as Array<keyof Student>;
-  const hasHeader = mappedHeaders.length >= Math.max(2, Math.ceil(firstColumns.length / 2));
+  const hasHeader =
+    mappedHeaders.length >= Math.max(1, Math.ceil(firstColumns.length / 2)) &&
+    mappedHeaders.includes("name");
   const detectedHeaders = hasHeader ? firstColumns : [];
   const dataLines = hasHeader ? lines.slice(1) : lines;
   const rejected: string[] = [];
-  const rows: Student[] = [];
+  const rows: StudentDraft[] = [];
 
   dataLines.forEach((line, index) => {
     const columns = splitRow(line);
@@ -69,9 +70,8 @@ export function parseStudentPaste(input: string): ParsedStudentImport {
     }
 
     rows.push({
-      id: createId("student"),
       name,
-      studentNo: partial.studentNo?.trim() || String(rows.length + 1).padStart(2, "0"),
+      studentNo: partial.studentNo?.trim() ?? "",
       gender: normalizeGender(partial.gender),
       heightCm: normalizeHeight(partial.heightCm),
       vision: normalizeVision(partial.vision),
@@ -133,14 +133,14 @@ function normalizeGender(value: unknown): Gender {
 
 function normalizeHeight(value: unknown) {
   const parsed = Number(String(value ?? "").replace(/[^\d.]/g, ""));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 150;
+  return Number.isFinite(parsed) && parsed >= 100 && parsed <= 220 ? parsed : 150;
 }
 
 function normalizeVision(value: unknown): VisionStatus {
   const text = String(value ?? "").trim().toLowerCase();
   if (!text) return "unknown";
-  if (/(重点|高度|严重|差|近视|severe|high)/.test(text)) return "severe";
   if (/(轻|一般|关注|mild)/.test(text)) return "mild";
+  if (/(重点|高度|严重|差|近视|severe|high)/.test(text)) return "severe";
   if (/(正常|好|normal|ok)/.test(text)) return "normal";
   return "unknown";
 }

@@ -12,7 +12,7 @@ SeatWise 是一个面向中国中小学班主任的智能排座位助手 MVP。�
 - 一次生成 3 个候选方案，并展示评分、冲突原因和复核提示。
 - 支持拖拽微调座位、锁定学生、锁定座位和重排未锁定座位。
 - 提供教师版、学生版和打印版视图；公开视图默认隐藏敏感字段。
-- 支持打印/PDF、SVG 图片和 CSV 导出。
+- 支持打印/PDF、SVG 图片和带公式注入防护的 UTF-8 CSV 导出。
 - 提供座位版本历史、学生座位轨迹、长期后排/边缘/同桌风险提示。
 
 ## 技术栈
@@ -28,10 +28,12 @@ SeatWise 是一个面向中国中小学班主任的智能排座位助手 MVP。�
 
 ## 环境要求
 
-- Node.js 22 或更高版本
-- npm 10 或更高版本
+- Node.js 22.9–22.x 或 24.x
+- npm 11.16 或更高版本
 
 `package.json` 中保留了 `private: true`，用于避免把这个应用误发布到 npm；这不影响将仓库作为开源项目发布。
+
+Next.js 15.5.20 仍固定依赖 PostCSS 8.4.31；项目仅对 Next 子依赖覆盖到 PostCSS 8.5.16，以修复 `GHSA-qx2v-qp2m-jg93`。升级 Next 后应重新审计并优先移除此覆盖。
 
 ## 本地运行
 
@@ -55,7 +57,9 @@ npm run start      # 启动生产服务
 npm run lint       # ESLint 检查
 npm run typecheck  # TypeScript 类型检查
 npm test           # 运行测试
-npm run check      # lint + typecheck + test
+npm run test:coverage # 运行测试并检查覆盖率门槛
+npm run test:e2e   # 运行 Chromium 端到端测试
+npm run check      # lint + typecheck + coverage
 npm run ci         # check + build + 生产依赖审计
 npm run cleanup:windows # 清理 Windows 本地 Playwright/Next 残留进程和临时快照
 ```
@@ -70,11 +74,14 @@ src/
   store/        Zustand 本地持久化状态
   test/         测试初始化
   types/        全局类型声明
+e2e/            Playwright 关键流程测试
 ```
 
 ## 隐私说明
 
 SeatWise MVP 默认采用浏览器本地存储，不接入后端、登录、云同步或学校系统。学生视力、健康备注、行为标签、特殊需求等敏感信息仅在教师版显示；学生版和打印版默认只展示姓名、学号和性别。
+
+本地数据以明文保存在当前浏览器配置中，公开视图不是访问控制。请勿在不受信任或多人共用的浏览器配置中保存真实学生资料；恢复示例数据前可先导出本地 JSON 备份。
 
 公开演示、截图或提交 issue 时，请避免上传真实学生姓名、学号、健康情况、行为标签、备注或其他可识别个人身份的信息。
 

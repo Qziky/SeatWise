@@ -1,8 +1,10 @@
 "use client";
 
 import { AlertTriangle, Clock3, RotateCw, UsersRound } from "lucide-react";
+import { getLayoutSignature } from "@/lib/layout";
 import { getRotationDeviationTips } from "@/lib/rotation";
 import { getFairnessRisks, getLongTermDeskMateRisks } from "@/lib/seating-engine";
+import type { ClassRoom, HistoryEntry, Student } from "@/lib/types";
 import { useSeatWiseStore } from "@/store/useSeatWiseStore";
 import { SeatingBoard } from "@/components/SeatingBoard";
 
@@ -10,17 +12,29 @@ export function HistoryPanel() {
   const classroom = useSeatWiseStore((state) => state.classroom);
   const history = useSeatWiseStore((state) => state.history);
   const viewMode = useSeatWiseStore((state) => state.viewMode);
-  const risks = getFairnessRisks(history, classroom.layout, classroom.students);
-  const deskMateRisks = getLongTermDeskMateRisks(history, classroom.layout);
+  const currentLayoutSignature = getLayoutSignature(classroom.layout);
+  const currentLayoutHistory = history.filter(
+    (entry) => entry.layoutSignature === currentLayoutSignature
+  );
+  const currentStudentIds = new Set(classroom.students.map((student) => student.id));
+  const risks = getFairnessRisks(currentLayoutHistory, classroom.layout, classroom.students);
+  const deskMateRisks = getLongTermDeskMateRisks(currentLayoutHistory, classroom.layout).filter(
+    (risk) => currentStudentIds.has(risk.studentAId) && currentStudentIds.has(risk.studentBId)
+  );
   const studentsById = new Map(classroom.students.map((student) => [student.id, student]));
   const latest = history.at(-1);
+  const latestClassroom = latest ? createHistoryClassroom(latest, classroom) : null;
+  const latestComparableHistory = latest
+    ? history.slice(0, -1).filter((entry) => entry.layoutSignature === latest.layoutSignature)
+    : [];
   const latestRotationDeviationTips = latest
     ? getRotationDeviationTips({
         assignments: latest.plan.assignments,
-        history: history.slice(0, -1),
-        layout: classroom.layout,
+        history: latestComparableHistory,
+        layout: latest.layoutSnapshot,
         policy: latest.rules.rotationPolicy,
-        students: classroom.students
+        students: latestClassroom?.students ?? [],
+        validStudentIds: new Set(Object.keys(latest.studentLabels))
       })
     : [];
 
@@ -50,6 +64,11 @@ export function HistoryPanel() {
                   {entry.adjustmentNote ? (
                     <p className="mt-2 rounded-[7px] bg-white p-2 text-xs text-ink/70">{entry.adjustmentNote}</p>
                   ) : null}
+                  {entry.legacySnapshot ? (
+                    <p className="mt-2 text-[11px] font-semibold text-marigold">
+                      旧数据按迁移时的布局近似恢复
+                    </p>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -60,10 +79,18 @@ export function HistoryPanel() {
           )}
         </div>
 
-        {latest ? (
+        {latest && latestClassroom ? (
           <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-2 shadow-sm md:p-3">
             <h3 className="mb-2 text-sm font-bold text-ink">最新保存方案</h3>
-            <SeatingBoard classroom={classroom} plan={latest.plan} mode={viewMode} readonly />
+            <SeatingBoard
+              classroom={latestClassroom}
+              plan={latest.plan}
+              mode={viewMode === "teacher" ? "student" : viewMode}
+              readonly
+            />
+            {viewMode === "teacher" ? (
+              <p className="mt-2 text-xs text-ink/50">历史快照仅保留姓名、学号和性别。</p>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -126,7 +153,7 @@ export function HistoryPanel() {
               const seats = history
                 .map((entry) => {
                   const seatId = Object.entries(entry.plan.assignments).find(([, value]) => value === student.id)?.[0];
-                  return classroom.layout.seats.find((seat) => seat.id === seatId);
+                  return entry.layoutSnapshot.seats.find((seat) => seat.id === seatId);
                 })
                 .filter(Boolean);
 
@@ -146,4 +173,21 @@ export function HistoryPanel() {
       </aside>
     </section>
   );
+}
+
+function createHistoryClassroom(entry: HistoryEntry, current: ClassRoom): ClassRoom {
+  const students: Student[] = Object.values(entry.studentLabels).map((student) => ({
+    ...student,
+    heightCm: 150,
+    vision: "unknown",
+    tags: [],
+    remark: "",
+    specialNeeds: ""
+  }));
+
+  return {
+    ...current,
+    layout: entry.layoutSnapshot,
+    students
+  };
 }

@@ -28,4 +28,17 @@ describe("parseStudentPaste", () => {
     expect(result.rows[0].name).toBe("李萌");
     expect(result.rows[0].vision).toBe("normal");
   });
+
+  it("recognizes a single-column name header", () => {
+    const result = parseStudentPaste("姓名\n张三\n李四");
+
+    expect(result.detectedHeaders).toEqual(["姓名"]);
+    expect(result.rows.map((student) => student.name)).toEqual(["张三", "李四"]);
+  });
+
+  it("does not classify mild myopia as severe", () => {
+    const result = parseStudentPaste("姓名\t视力\n张三\t轻度近视");
+
+    expect(result.rows[0].vision).toBe("mild");
+  });
 });

@@ -151,7 +151,7 @@ export function RuleConfigurator() {
               ))}
             </LabeledSelect>
             <LabeledNumber
-              label="周期天数"
+              label="建议周期天数"
               min={1}
               max={60}
               value={rotationPolicy.periodDays}
@@ -182,11 +182,6 @@ export function RuleConfigurator() {
                 </option>
               ))}
             </LabeledSelect>
-            <RuleSwitch
-              label="跳过空座"
-              checked={rotationPolicy.skipEmptySeats}
-              onChange={(value) => updateRotationPolicy({ skipEmptySeats: value })}
-            />
           </div>
         </div>
       </div>
@@ -200,6 +195,7 @@ export function RuleConfigurator() {
           <select
             className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
             value={studentAId}
+            aria-label="关系学生 A"
             onChange={(event) => setStudentAId(event.target.value)}
           >
             {classroom.students.map((student) => (
@@ -211,6 +207,7 @@ export function RuleConfigurator() {
           <select
             className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
             value={studentBId}
+            aria-label="关系学生 B"
             onChange={(event) => setStudentBId(event.target.value)}
           >
             {classroom.students.map((student) => (
@@ -222,6 +219,7 @@ export function RuleConfigurator() {
           <select
             className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
             value={type}
+            aria-label="关系类型"
             onChange={(event) => setType(event.target.value as RelationshipRuleType)}
           >
             <option value="avoid-desk">不能同桌</option>

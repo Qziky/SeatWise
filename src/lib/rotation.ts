@@ -1,9 +1,4 @@
-import {
-  describeSeat,
-  getActiveSeats,
-  getSeatById,
-  isFrontHalf
-} from "@/lib/layout";
+import { describeSeat, getActiveSeats, getSeatById, isFrontHalf } from "@/lib/layout";
 import type {
   ClassroomLayout,
   HistoryEntry,
@@ -46,8 +41,7 @@ export const defaultRotationPolicy: RotationPolicy = {
   periodDays: 7,
   stepRows: 1,
   stepColumns: 1,
-  strictness: "policy-first",
-  skipEmptySeats: true
+  strictness: "policy-first"
 };
 
 export interface RotationTarget {
@@ -88,10 +82,7 @@ export function getDefaultRotationDirection(pattern: RotationPattern) {
 }
 
 export function normalizeRotationPolicy(policy?: Partial<RotationPolicy> | null): RotationPolicy {
-  const next = {
-    ...defaultRotationPolicy,
-    ...(policy ?? {})
-  };
+  const next = { ...defaultRotationPolicy, ...(policy ?? {}) };
   const pattern = isRotationPattern(next.pattern) ? next.pattern : defaultRotationPolicy.pattern;
   const direction = directionsByPattern[pattern].includes(next.direction)
     ? next.direction
@@ -105,8 +96,7 @@ export function normalizeRotationPolicy(policy?: Partial<RotationPolicy> | null)
     periodDays: clampInteger(next.periodDays, 1, 60),
     stepRows: clampInteger(next.stepRows, 1, 12),
     stepColumns: clampInteger(next.stepColumns, 1, 12),
-    strictness: next.strictness === "balanced" ? "balanced" : "policy-first",
-    skipEmptySeats: next.skipEmptySeats !== false
+    strictness: next.strictness === "balanced" ? "balanced" : "policy-first"
   };
 }
 
@@ -118,7 +108,7 @@ export function describeRotationPolicy(policy?: Partial<RotationPolicy> | null) 
     rotationPatternLabels[normalized.pattern],
     rotationDirectionLabels[normalized.direction],
     `第 ${normalized.rounds} 轮`,
-    `${normalized.periodDays} 天/次`
+    `建议每 ${normalized.periodDays} 天`
   ].join(" · ");
 }
 
@@ -126,6 +116,7 @@ export function getRotationTargets(args: {
   history: HistoryEntry[];
   layout: ClassroomLayout;
   policy?: Partial<RotationPolicy> | null;
+  validStudentIds?: ReadonlySet<string>;
 }) {
   const policy = normalizeRotationPolicy(args.policy);
   const latest = args.history.at(-1);
@@ -133,9 +124,10 @@ export function getRotationTargets(args: {
 
   if (!policy.enabled || !latest) return targets;
 
+  const activeSeatById = new Map(getActiveSeats(args.layout).map((seat) => [seat.id, seat]));
   Object.entries(latest.plan.assignments).forEach(([fromSeatId, studentId]) => {
-    if (!studentId) return;
-    const fromSeat = getSeatById(args.layout, fromSeatId);
+    if (!studentId || (args.validStudentIds && !args.validStudentIds.has(studentId))) return;
+    const fromSeat = activeSeatById.get(fromSeatId);
     if (!fromSeat) return;
     const targetSeat = getNextSeat(args.layout, fromSeat, policy);
     if (!targetSeat) return;
@@ -157,16 +149,15 @@ export function getRotationMatchStats(args: {
   history: HistoryEntry[];
   layout: ClassroomLayout;
   policy?: Partial<RotationPolicy> | null;
+  validStudentIds?: ReadonlySet<string>;
 }): RotationMatchStats {
-  const targets = getRotationTargets({
-    history: args.history,
-    layout: args.layout,
-    policy: args.policy
-  });
+  const targets = getRotationTargets(args);
   const seatByStudent = new Map<string, string>();
 
   Object.entries(args.assignments).forEach(([seatId, studentId]) => {
-    if (studentId) seatByStudent.set(studentId, seatId);
+    if (studentId && (!args.validStudentIds || args.validStudentIds.has(studentId))) {
+      seatByStudent.set(studentId, seatId);
+    }
   });
 
   let matched = 0;
@@ -189,20 +180,23 @@ export function getRotationDeviationTips(args: {
   layout: ClassroomLayout;
   policy?: Partial<RotationPolicy> | null;
   students: Student[];
+  validStudentIds?: ReadonlySet<string>;
   limit?: number;
 }) {
   const policy = normalizeRotationPolicy(args.policy);
   if (!policy.enabled) return [];
 
-  const stats = getRotationMatchStats(args);
+  const validStudentIds = args.validStudentIds ?? new Set(args.students.map((student) => student.id));
+  const stats = getRotationMatchStats({ ...args, validStudentIds });
   if (stats.total === 0) return [];
 
   const studentsById = new Map(args.students.map((student) => [student.id, student]));
   const actualSeatByStudent = new Map<string, SeatCell>();
+  const activeSeatById = new Map(getActiveSeats(args.layout).map((seat) => [seat.id, seat]));
 
   Object.entries(args.assignments).forEach(([seatId, studentId]) => {
-    if (!studentId) return;
-    const seat = getSeatById(args.layout, seatId);
+    if (!studentId || !validStudentIds.has(studentId)) return;
+    const seat = activeSeatById.get(seatId);
     if (seat) actualSeatByStudent.set(studentId, seat);
   });
 
@@ -214,9 +208,7 @@ export function getRotationDeviationTips(args: {
     const student = studentsById.get(studentId);
     const name = student?.name ?? "学生";
     const reason = inferDeviationReason(student, target.targetSeat, actualSeat, args.layout);
-    tips.push(
-      `${name} 本轮应到${describeSeat(target.targetSeat)}，${reason}调整到${describeSeat(actualSeat)}。`
-    );
+    tips.push(`${name} 本轮应到${describeSeat(target.targetSeat)}，${reason}调整到${describeSeat(actualSeat)}。`);
   });
 
   return tips.slice(0, args.limit ?? 6);
@@ -228,8 +220,7 @@ function getNextSeat(layout: ClassroomLayout, fromSeat: SeatCell, policy: Rotati
 }
 
 function getNextSeatByPath(layout: ClassroomLayout, fromSeat: SeatCell, policy: RotationPolicy) {
-  const seats = getEligibleSeats(layout, policy);
-  const path = getSerpentinePath(seats);
+  const path = getSerpentinePath(getActiveSeats(layout));
   const index = path.findIndex((seat) => seat.id === fromSeat.id);
   if (index < 0 || path.length === 0) return undefined;
 
@@ -241,22 +232,13 @@ function getNextSeatByPath(layout: ClassroomLayout, fromSeat: SeatCell, policy: 
 }
 
 function getNextSeatByDelta(layout: ClassroomLayout, fromSeat: SeatCell, policy: RotationPolicy) {
-  const eligibleIds = new Set(getEligibleSeats(layout, policy).map((seat) => seat.id));
-  const delta = getPatternDelta(layout, policy);
+  const eligibleIds = new Set(getActiveSeats(layout).map((seat) => seat.id));
   if (!eligibleIds.has(fromSeat.id)) return undefined;
+  const delta = getPatternDelta(layout, policy);
 
-  if (policy.skipEmptySeats) {
-    return advanceSeatBySuccessor(fromSeat, policy.rounds, (seat) =>
-      getNextEligibleDeltaSeat(layout, seat, delta, eligibleIds)
-    );
-  }
-
-  const rowCycle = delta.row === 0 ? 1 : layout.rows / greatestCommonDivisor(Math.abs(delta.row), layout.rows);
-  const columnCycle = delta.column === 0 ? 1 : layout.columns / greatestCommonDivisor(Math.abs(delta.column), layout.columns);
-  const effectiveRounds = policy.rounds % leastCommonMultiple(rowCycle, columnCycle);
-  const row = wrapValue(fromSeat.row + delta.row * effectiveRounds, layout.rows);
-  const column = wrapValue(fromSeat.column + delta.column * effectiveRounds, layout.columns);
-  return getSeatById(layout, createSeatId(row, column));
+  return advanceSeatBySuccessor(fromSeat, policy.rounds, (seat) =>
+    getNextEligibleDeltaSeat(layout, seat, delta, eligibleIds)
+  );
 }
 
 function getNextEligibleDeltaSeat(
@@ -307,25 +289,39 @@ function advanceSeatBySuccessor(
 }
 
 function getPatternDelta(layout: ClassroomLayout, policy: RotationPolicy) {
+  const axes = getPodiumAxes(layout);
+
   if (policy.pattern === "vertical") {
-    const step = layout.podium === "top" || layout.podium === "bottom" ? policy.stepRows : policy.stepColumns;
-    if (layout.podium === "top") return { row: policy.direction === "backward" ? step : -step, column: 0 };
-    if (layout.podium === "bottom") return { row: policy.direction === "backward" ? -step : step, column: 0 };
-    if (layout.podium === "left") return { row: 0, column: policy.direction === "backward" ? step : -step };
-    return { row: 0, column: policy.direction === "backward" ? -step : step };
+    const direction = policy.direction === "backward" ? 1 : -1;
+    return scaleVector(axes.back, policy.stepRows * direction);
   }
 
   if (policy.pattern === "horizontal") {
-    return { row: 0, column: policy.direction === "left" ? -policy.stepColumns : policy.stepColumns };
+    const direction = policy.direction === "right" ? 1 : -1;
+    return scaleVector(axes.right, policy.stepColumns * direction);
   }
 
-  const row = policy.direction.startsWith("down") ? policy.stepRows : -policy.stepRows;
-  const column = policy.direction.endsWith("right") ? policy.stepColumns : -policy.stepColumns;
-  return { row, column };
+  const depthDirection = policy.direction.startsWith("down") ? 1 : -1;
+  const lateralDirection = policy.direction.endsWith("right") ? 1 : -1;
+  return addVectors(
+    scaleVector(axes.back, policy.stepRows * depthDirection),
+    scaleVector(axes.right, policy.stepColumns * lateralDirection)
+  );
 }
 
-function getEligibleSeats(layout: ClassroomLayout, policy: RotationPolicy) {
-  return policy.skipEmptySeats ? getActiveSeats(layout) : layout.seats;
+function getPodiumAxes(layout: ClassroomLayout) {
+  if (layout.podium === "top") return { back: { row: 1, column: 0 }, right: { row: 0, column: 1 } };
+  if (layout.podium === "bottom") return { back: { row: -1, column: 0 }, right: { row: 0, column: -1 } };
+  if (layout.podium === "left") return { back: { row: 0, column: 1 }, right: { row: -1, column: 0 } };
+  return { back: { row: 0, column: -1 }, right: { row: 1, column: 0 } };
+}
+
+function scaleVector(vector: { row: number; column: number }, factor: number) {
+  return { row: vector.row * factor, column: vector.column * factor };
+}
+
+function addVectors(a: { row: number; column: number }, b: { row: number; column: number }) {
+  return { row: a.row + b.row, column: a.column + b.column };
 }
 
 function getSerpentinePath(seats: SeatCell[]) {
@@ -345,9 +341,7 @@ function inferDeviationReason(
   if (student.vision === "severe" && !isFrontHalf(layout, targetSeat) && isFrontHalf(layout, actualSeat)) {
     return "因视力照顾";
   }
-  if (student.specialNeeds && /靠前|听力|观察|反光/.test(student.specialNeeds)) {
-    return "因特殊需求";
-  }
+  if (student.specialNeeds && /靠前|听力|观察|反光/.test(student.specialNeeds)) return "因特殊需求";
   if (student.heightCm >= 168 && isFrontHalf(layout, targetSeat) && !isFrontHalf(layout, actualSeat)) {
     return "因身高遮挡";
   }
@@ -378,21 +372,6 @@ function clampInteger(value: number, min: number, max: number) {
 function normalizeRoundCount(value: number) {
   if (!Number.isFinite(value)) return defaultRotationPolicy.rounds;
   return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.round(value)));
-}
-
-function greatestCommonDivisor(a: number, b: number): number {
-  let x = a;
-  let y = b;
-
-  while (y !== 0) {
-    [x, y] = [y, x % y];
-  }
-
-  return Math.max(1, x);
-}
-
-function leastCommonMultiple(a: number, b: number) {
-  return (a * b) / greatestCommonDivisor(a, b);
 }
 
 function isRotationPattern(value: unknown): value is RotationPattern {

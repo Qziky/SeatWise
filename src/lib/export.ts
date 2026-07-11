@@ -15,7 +15,7 @@ export function exportSeatingPlan(args: {
     return;
   }
 
-  if (args.format === "excel") {
+  if (args.format === "csv") {
     const csv = buildCsv(args);
     downloadBlob(csv, "text/csv;charset=utf-8", `${args.classroom.name}-座位表.csv`);
     return;
@@ -25,7 +25,7 @@ export function exportSeatingPlan(args: {
   downloadBlob(svg, "image/svg+xml;charset=utf-8", `${args.classroom.name}-座位表.svg`);
 }
 
-function buildCsv(args: {
+export function buildCsv(args: {
   mode: ViewMode;
   classroom: ClassRoom;
   plan: SeatingPlan;
@@ -42,7 +42,10 @@ function buildCsv(args: {
     const visible = student ? getVisibleStudent(student, args.mode) : null;
 
     if (!seat || !visible) {
-      return [seat?.row ?? "", seat?.column ?? "", "", "", ""];
+      const emptyRow = Array<string | number>(headers.length).fill("");
+      emptyRow[0] = seat?.row ?? "";
+      emptyRow[1] = seat?.column ?? "";
+      return emptyRow;
     }
 
     const base = [seat.row, seat.column, visible.name, visible.studentNo, visible.gender];
@@ -58,9 +61,11 @@ function buildCsv(args: {
     ];
   });
 
-  return [headers, ...rows]
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+  const content = [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+
+  return `\uFEFF${content}`;
 }
 
 function buildSvg(args: {
@@ -111,4 +116,10 @@ function escapeXml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeCsvValue(value: string | number) {
+  const text = String(value);
+  const spreadsheetSafe = /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${spreadsheetSafe.replace(/"/g, '""')}"`;
 }

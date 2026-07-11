@@ -14,7 +14,10 @@ const emptyScore = {
   balance: 0
 };
 
-function createHistory(assignments: Record<string, string | null>): HistoryEntry[] {
+function createHistory(
+  assignments: Record<string, string | null>,
+  layout = createGridLayout(6, 8, "top")
+): HistoryEntry[] {
   const plan: SeatingPlan = {
     id: "plan-history",
     name: "历史方案",
@@ -25,7 +28,16 @@ function createHistory(assignments: Record<string, string | null>): HistoryEntry
     warnings: [],
     reviewTips: [],
     lockedSeatIds: [],
-    lockedStudentIds: []
+    lockedStudentIds: [],
+    sourceRevision: 0,
+    generationSeed: 1,
+    feasibility: {
+      status: "complete",
+      assignedCount: Object.values(assignments).filter(Boolean).length,
+      totalStudents: Object.values(assignments).filter(Boolean).length,
+      unassignedStudentIds: [],
+      hardViolations: []
+    }
   };
 
   return [
@@ -35,7 +47,10 @@ function createHistory(assignments: Record<string, string | null>): HistoryEntry
       savedAt: "2026-07-01T00:00:00.000Z",
       plan,
       rules: defaultRuleConfig,
-      adjustmentNote: ""
+      adjustmentNote: "",
+      layoutSnapshot: layout,
+      layoutSignature: `${layout.rows}x${layout.columns}:${layout.podium}`,
+      studentLabels: {}
     }
   ];
 }
@@ -47,7 +62,7 @@ describe("rotation helpers", () => {
       history: createHistory({
         "seat-r1-c1": "a",
         "seat-r2-c1": "b"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -65,7 +80,7 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c2": "a"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -82,7 +97,7 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r2-c2": "a"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -99,7 +114,7 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c3": "a"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -111,7 +126,7 @@ describe("rotation helpers", () => {
     expect(targets.get("a")?.targetSeatId).toBe("seat-r2-c3");
   });
 
-  it("skips empty seats when configured", () => {
+  it("always skips seats marked empty", () => {
     const layout = createGridLayout(3, 2, "top");
     const seats = layout.seats.map((seat) =>
       seat.id === "seat-r2-c1" ? { ...seat, attributes: [...seat.attributes, "empty" as const] } : seat
@@ -119,13 +134,12 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c1": "a"
-      }),
+      }, { ...layout, seats }),
       layout: { ...layout, seats },
       policy: {
         ...defaultRotationPolicy,
         pattern: "vertical",
-        direction: "backward",
-        skipEmptySeats: true
+        direction: "backward"
       }
     });
 
@@ -137,7 +151,7 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c1": "a"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -158,14 +172,13 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c1": "a"
-      }),
+      }, { ...layout, seats }),
       layout: { ...layout, seats },
       policy: {
         ...defaultRotationPolicy,
         pattern: "vertical",
         direction: "backward",
-        rounds: 2,
-        skipEmptySeats: true
+        rounds: 2
       }
     });
 
@@ -177,7 +190,7 @@ describe("rotation helpers", () => {
     const targets = getRotationTargets({
       history: createHistory({
         "seat-r1-c1": "a"
-      }),
+      }, layout),
       layout,
       policy: {
         ...defaultRotationPolicy,
@@ -201,5 +214,48 @@ describe("rotation helpers", () => {
 
     expect(stats.total).toBe(0);
     expect(stats.rate).toBe(100);
+  });
+
+  it("filters students that no longer exist from targets and statistics", () => {
+    const layout = createGridLayout(2, 2, "top");
+    const history = createHistory(
+      {
+        "seat-r1-c1": "active",
+        "seat-r1-c2": "deleted"
+      },
+      layout
+    );
+    const validStudentIds = new Set(["active"]);
+    const stats = getRotationMatchStats({
+      assignments: { "seat-r2-c1": "active" },
+      history,
+      layout,
+      policy: defaultRotationPolicy,
+      validStudentIds
+    });
+
+    expect(stats.total).toBe(1);
+    expect(stats.matched).toBe(1);
+    expect(stats.targets.has("deleted")).toBe(false);
+  });
+
+  it.each([
+    ["top", "seat-r3-c3"],
+    ["bottom", "seat-r1-c1"],
+    ["left", "seat-r1-c3"],
+    ["right", "seat-r3-c1"]
+  ] as const)("interprets diagonal directions relative to a %s podium", (podium, expectedSeatId) => {
+    const layout = createGridLayout(3, 3, podium);
+    const targets = getRotationTargets({
+      history: createHistory({ "seat-r2-c2": "a" }, layout),
+      layout,
+      policy: {
+        ...defaultRotationPolicy,
+        pattern: "diagonal",
+        direction: "down-right"
+      }
+    });
+
+    expect(targets.get("a")?.targetSeatId).toBe(expectedSeatId);
   });
 });

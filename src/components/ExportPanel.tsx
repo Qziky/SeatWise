@@ -2,13 +2,17 @@
 
 import { Download, FileImage, FileSpreadsheet, Printer } from "lucide-react";
 import { exportSeatingPlan } from "@/lib/export";
-import { getSelectedPlan, useSeatWiseStore } from "@/store/useSeatWiseStore";
+import { getSelectedPlan, isPlanStale, useSeatWiseStore } from "@/store/useSeatWiseStore";
 import { SeatingBoard } from "@/components/SeatingBoard";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 
 export function ExportPanel() {
   const state = useSeatWiseStore();
   const selectedPlan = getSelectedPlan(state);
+  const selectedPlanStale = isPlanStale(state, selectedPlan);
+  const canExport = Boolean(
+    selectedPlan && !selectedPlanStale && selectedPlan.feasibility.status === "complete"
+  );
 
   return (
     <section className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -21,6 +25,17 @@ export function ExportPanel() {
           <ViewModeToggle value={state.viewMode} onChange={state.setViewMode} />
         </div>
         <SeatingBoard classroom={state.classroom} plan={selectedPlan} mode={state.viewMode} readonly />
+        {selectedPlanStale ? (
+          <p className="mt-3 rounded-[7px] bg-marigold/10 p-2 text-sm font-semibold text-marigold no-print" role="status">
+            当前方案已过期，请重新生成后再导出。
+          </p>
+        ) : selectedPlan?.feasibility.status === "partial" ? (
+          <p className="mt-3 rounded-[7px] bg-coral/10 p-2 text-sm font-semibold text-coral no-print" role="alert">
+            {selectedPlan.feasibility.unassignedStudentIds.length
+              ? "当前方案未安排全部学生，暂不能导出。"
+              : "当前方案仍有硬约束冲突，暂不能导出。"}
+          </p>
+        ) : null}
       </div>
 
       <aside className="space-y-3 no-print">
@@ -33,7 +48,7 @@ export function ExportPanel() {
             <button
               type="button"
               className="flex items-center justify-center gap-1.5 rounded-[7px] bg-fern px-3 py-1.5 text-sm font-bold text-white hover:bg-fern/90"
-              disabled={!selectedPlan}
+              disabled={!canExport}
               onClick={() =>
                 selectedPlan &&
                 exportSeatingPlan({
@@ -50,7 +65,7 @@ export function ExportPanel() {
             <button
               type="button"
               className="flex items-center justify-center gap-1.5 rounded-[7px] border border-ink/10 bg-white px-3 py-1.5 text-sm font-bold text-ink hover:bg-chalk"
-              disabled={!selectedPlan}
+              disabled={!canExport}
               onClick={() =>
                 selectedPlan &&
                 exportSeatingPlan({
@@ -67,11 +82,11 @@ export function ExportPanel() {
             <button
               type="button"
               className="flex items-center justify-center gap-1.5 rounded-[7px] border border-ink/10 bg-white px-3 py-1.5 text-sm font-bold text-ink hover:bg-chalk"
-              disabled={!selectedPlan}
+              disabled={!canExport}
               onClick={() =>
                 selectedPlan &&
                 exportSeatingPlan({
-                  format: "excel",
+                  format: "csv",
                   mode: state.viewMode,
                   classroom: state.classroom,
                   plan: selectedPlan
@@ -79,7 +94,7 @@ export function ExportPanel() {
               }
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Excel / CSV
+              CSV
             </button>
           </div>
         </div>
