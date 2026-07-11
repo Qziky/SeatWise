@@ -10,14 +10,16 @@ export function createGridLayout(
   podium: PodiumDirection = "top",
   previousSeats: SeatCell[] = []
 ): ClassroomLayout {
+  const normalizedRows = normalizeDimension(rows);
+  const normalizedColumns = normalizeDimension(columns);
   const previousById = new Map(previousSeats.map((seat) => [seat.id, seat]));
   const seats: SeatCell[] = [];
 
-  for (let row = 1; row <= rows; row += 1) {
-    for (let column = 1; column <= columns; column += 1) {
+  for (let row = 1; row <= normalizedRows; row += 1) {
+    for (let column = 1; column <= normalizedColumns; column += 1) {
       const id = createSeatId(row, column);
       const previous = previousById.get(id);
-      const autoAttributes = inferSeatAttributes(row, column, rows, columns, podium);
+      const autoAttributes = inferSeatAttributes(row, column, normalizedRows, normalizedColumns, podium);
       const preserved = previous?.attributes.filter(
         (attribute) => !["back", "edge"].includes(attribute)
       );
@@ -32,7 +34,16 @@ export function createGridLayout(
     }
   }
 
-  return { rows, columns, podium, seats };
+  return { rows: normalizedRows, columns: normalizedColumns, podium, seats };
+}
+
+export function getLayoutSignature(layout: ClassroomLayout) {
+  const seats = [...layout.seats]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((seat) => `${seat.id}:${[...seat.attributes].sort().join(",")}`)
+    .join("|");
+
+  return `${layout.rows}x${layout.columns}:${layout.podium}:${seats}`;
 }
 
 export function inferSeatAttributes(
@@ -115,4 +126,9 @@ export function isNearSeat(a: SeatCell, b: SeatCell) {
 
 export function describeSeat(seat: SeatCell) {
   return `第${seat.row}排第${seat.column}座`;
+}
+
+function normalizeDimension(value: number) {
+  const normalized = Number.isFinite(value) ? Math.round(value) : 1;
+  return Math.max(1, Math.min(12, normalized));
 }

@@ -20,4 +20,13 @@ describe("layout helpers", () => {
     expect(first && second && isDeskMate(first, second)).toBe(true);
     expect(first && third && isDeskMate(first, third)).toBe(false);
   });
+
+  it("normalizes non-integer and out-of-range dimensions", () => {
+    const layout = createGridLayout(3.5, 99, "top");
+
+    expect(layout.rows).toBe(4);
+    expect(layout.columns).toBe(12);
+    expect(layout.seats).toHaveLength(48);
+    expect(layout.seats.some((seat) => seat.attributes.includes("back"))).toBe(true);
+  });
 });

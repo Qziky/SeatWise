@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSpreadsheet, Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { parseStudentPaste } from "@/lib/importer";
 import { visionLabels } from "@/lib/types";
@@ -20,6 +20,7 @@ export function StudentManager() {
   const [pasteText, setPasteText] = useState(
     "姓名\t学号\t性别\t身高\t视力\t标签\t备注\t特殊需求\n秦朗\t17\t男\t159\t轻度关注\t互助搭配\t\t\n叶安\t18\t女\t146\t重点照顾\t需要靠前\t看黑板吃力\t前两排"
   );
+  const [importMessage, setImportMessage] = useState("");
   const preview = useMemo(() => parseStudentPaste(pasteText), [pasteText]);
 
   function handleAddStudent() {
@@ -105,17 +106,23 @@ export function StudentManager() {
                 />
                 <input
                   className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
-                  type="number"
-                  min={100}
-                  max={220}
-                  value={draft.heightCm}
-                  onChange={(event) => setDraft({ ...draft, heightCm: Number(event.target.value) })}
+                type="number"
+                min={100}
+                max={220}
+                aria-label="身高"
+                value={draft.heightCm}
+                onChange={(event) => {
+                  if (Number.isFinite(event.target.valueAsNumber)) {
+                    setDraft({ ...draft, heightCm: event.target.valueAsNumber });
+                  }
+                }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <select
                   className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
                   value={draft.gender}
+                  aria-label="性别"
                   onChange={(event) => setDraft({ ...draft, gender: event.target.value as Gender })}
                 >
                   {genderOptions.map((option) => (
@@ -125,6 +132,7 @@ export function StudentManager() {
                 <select
                   className="rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
                   value={draft.vision}
+                  aria-label="视力"
                   onChange={(event) => setDraft({ ...draft, vision: event.target.value as VisionStatus })}
                 >
                   {visionOptions.map((option) => (
@@ -179,7 +187,11 @@ export function StudentManager() {
             <textarea
               className="min-h-28 w-full rounded-[7px] border border-ink/10 px-2.5 py-1.5 text-sm"
               value={pasteText}
-              onChange={(event) => setPasteText(event.target.value)}
+              aria-label="粘贴学生名单"
+              onChange={(event) => {
+                setPasteText(event.target.value);
+                setImportMessage("");
+              }}
             />
             <div className="mt-2 rounded-[7px] bg-chalk p-2 text-xs text-ink/70">
               已解析 {preview.rows.length} 行
@@ -190,26 +202,22 @@ export function StudentManager() {
               type="button"
               className="mt-2 w-full rounded-[7px] bg-coral px-3 py-1.5 text-sm font-bold text-white shadow-sm hover:bg-coral/90"
               disabled={preview.rows.length === 0}
-              onClick={() => importStudents(preview.rows)}
+              onClick={() => {
+                const result = importStudents(preview.rows);
+                const conflictText = result.conflicts.length
+                  ? `，跳过 ${result.conflicts.length} 个重复学号`
+                  : "";
+                setImportMessage(`已导入 ${result.importedCount} 名学生${conflictText}。`);
+                if (result.importedCount) setPasteText("");
+              }}
             >
               确认导入 {preview.rows.length} 名
             </button>
-          </div>
-
-          <div className="rounded-[8px] border border-dashed border-ink/20 bg-paper p-3">
-            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-ink">
-              <FileSpreadsheet className="h-4 w-4 text-marigold" />
-              CSV / Excel 入口
-            </h3>
-            <input className="w-full text-sm" type="file" accept=".csv,.xlsx,.xls" />
-            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-              <select className="rounded-[7px] border border-ink/10 px-2.5 py-1.5" defaultValue="name">
-                <option value="name">姓名列</option>
-              </select>
-              <select className="rounded-[7px] border border-ink/10 px-2.5 py-1.5" defaultValue="studentNo">
-                <option value="studentNo">学号列</option>
-              </select>
-            </div>
+            {importMessage ? (
+              <p className="mt-2 rounded-[7px] bg-paper p-2 text-xs font-semibold text-ink/70" role="status">
+                {importMessage}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -279,8 +287,14 @@ function StudentMobileCard({
           <input
             className="mt-1 w-full rounded-[6px] border border-ink/10 bg-white px-2 py-1 text-sm"
             type="number"
+            min={100}
+            max={220}
             value={student.heightCm}
-            onChange={(event) => onUpdate({ heightCm: Number(event.target.value) })}
+            onChange={(event) => {
+              if (Number.isFinite(event.target.valueAsNumber)) {
+                onUpdate({ heightCm: event.target.valueAsNumber });
+              }
+            }}
           />
         </label>
         <label className="text-xs font-bold text-ink/55">
@@ -348,6 +362,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <input
           className="w-20 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 姓名`}
           value={student.name}
           onChange={(event) => onUpdate({ name: event.target.value })}
         />
@@ -355,6 +370,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <input
           className="w-14 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 学号`}
           value={student.studentNo}
           onChange={(event) => onUpdate({ studentNo: event.target.value })}
         />
@@ -362,6 +378,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <select
           className="w-16 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 性别`}
           value={student.gender}
           onChange={(event) => onUpdate({ gender: event.target.value as Gender })}
         >
@@ -374,13 +391,21 @@ function StudentRow({
         <input
           className="w-16 rounded-[6px] border border-ink/10 px-1.5 py-1"
           type="number"
+          min={100}
+          max={220}
+          aria-label={`${student.name} 身高`}
           value={student.heightCm}
-          onChange={(event) => onUpdate({ heightCm: Number(event.target.value) })}
+          onChange={(event) => {
+            if (Number.isFinite(event.target.valueAsNumber)) {
+              onUpdate({ heightCm: event.target.valueAsNumber });
+            }
+          }}
         />
       </td>
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <select
           className="w-24 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 视力`}
           value={student.vision}
           onChange={(event) => onUpdate({ vision: event.target.value as VisionStatus })}
         >
@@ -394,6 +419,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <input
           className="w-28 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 标签`}
           value={student.tags.join("、")}
           onChange={(event) =>
             onUpdate({
@@ -408,6 +434,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <input
           className="w-36 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 备注`}
           value={student.remark}
           onChange={(event) => onUpdate({ remark: event.target.value })}
         />
@@ -415,6 +442,7 @@ function StudentRow({
       <td className="border-b border-ink/5 px-1.5 py-1.5">
         <input
           className="w-36 rounded-[6px] border border-ink/10 px-1.5 py-1"
+          aria-label={`${student.name} 特殊需求`}
           value={student.specialNeeds}
           onChange={(event) => onUpdate({ specialNeeds: event.target.value })}
         />

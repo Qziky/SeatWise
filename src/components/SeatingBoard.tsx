@@ -3,8 +3,8 @@
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Lock, Unlock, X } from "lucide-react";
-import { useState } from "react";
+import { ArrowRightLeft, Lock, Unlock, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { getVisibleStudent, shouldShowSensitive } from "@/lib/privacy";
@@ -66,6 +66,14 @@ const noteLegendItems: LegendItem[] = [
   { label: "特殊需求", legendLabel: "特殊需求", description: "红色，需要教师复核", shortLabel: "特", className: "border-coral/45 bg-coral/10 text-coral" }
 ];
 
+const lockedLegendItem: LegendItem = {
+  label: "锁定座位或学生",
+  legendLabel: "锁定",
+  description: "红边框",
+  shortLabel: "锁",
+  className: "border-coral/55 bg-coral/5 text-coral"
+};
+
 const seatBorderLegendItems: BorderLegendItem[] = [
   { label: "靠窗", legendLabel: "靠窗", description: "上蓝线", shortLabel: "窗", className: "border-t-2 border-t-sky-500/45 border-x-ink/10 border-b-ink/10 bg-sky-500/[0.04]" },
   { label: "靠门", legendLabel: "靠门", description: "右紫线", shortLabel: "门", className: "border-r-2 border-r-violet-500/45 border-y-ink/10 border-l-ink/10 bg-violet-500/[0.04]" },
@@ -78,7 +86,7 @@ const teacherBorderLegendItems: BorderLegendItem[] = [
   { label: "正常视力", legendLabel: "正常", description: "左绿线", shortLabel: "正", className: "border-l-4 border-l-fern/55 border-y-ink/10 border-r-ink/10 bg-white" },
   { label: "轻度关注", legendLabel: "轻度", description: "左黄线", shortLabel: "轻", className: "border-l-4 border-l-marigold border-y-ink/10 border-r-ink/10 bg-marigold/5" },
   { label: "重点照顾", legendLabel: "重点", description: "左红线", shortLabel: "重", className: "border-l-4 border-l-coral border-y-ink/10 border-r-ink/10 bg-coral/5" },
-  { label: "锁定座位或学生", legendLabel: "锁定", description: "红边框", shortLabel: "锁", className: "border-coral/55 bg-coral/5" }
+  lockedLegendItem
 ];
 
 interface DetailState {
@@ -91,6 +99,11 @@ interface DragState {
   overSeatId: string;
   sourceSeatId: string;
   studentId: string;
+}
+
+interface MoveTarget {
+  id: string;
+  label: string;
 }
 
 function getSeatAttributeTitle(attributes: SeatAttribute[]) {
@@ -149,12 +162,31 @@ export function SeatingBoard({
   const [detail, setDetail] = useState<DetailState | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [previewAssignments, setPreviewAssignments] = useState<Record<string, string | null> | null>(null);
+  const detailTriggerRef = useRef<HTMLElement | null>(null);
   const visibleAssignments = previewAssignments ?? plan?.assignments ?? {};
   const selectedSeat = detail ? classroom.layout.seats.find((seat) => seat.id === detail.seatId) ?? null : null;
   const selectedStudentId = selectedSeat ? visibleAssignments[selectedSeat.id] ?? null : null;
   const selectedStudent = selectedStudentId ? studentsById.get(selectedStudentId) ?? null : null;
   const selectedSeatLocked = Boolean(selectedSeat && plan?.lockedSeatIds.includes(selectedSeat.id));
   const selectedStudentLocked = Boolean(selectedStudent && plan?.lockedStudentIds.includes(selectedStudent.id));
+  const moveTargets: MoveTarget[] =
+    isTeacherMode && !readonly && selectedSeat && selectedStudent && onMoveStudent
+      ? classroom.layout.seats
+          .filter((seat) => {
+            if (seat.id === selectedSeat.id || seat.attributes.includes("empty")) return false;
+            if (plan?.lockedSeatIds.includes(seat.id)) return false;
+            const targetStudentId = visibleAssignments[seat.id];
+            return !targetStudentId || !plan?.lockedStudentIds.includes(targetStudentId);
+          })
+          .map((seat) => {
+            const targetStudentId = visibleAssignments[seat.id];
+            const targetStudent = targetStudentId ? studentsById.get(targetStudentId) : null;
+            return {
+              id: seat.id,
+              label: `第 ${seat.row} 排第 ${seat.column} 列${targetStudent ? `（${targetStudent.name}）` : "（空）"}`
+            };
+          })
+      : [];
   const activeDragSeat = dragState
     ? classroom.layout.seats.find((seat) => seat.id === dragState.sourceSeatId) ?? null
     : null;
@@ -163,12 +195,18 @@ export function SeatingBoard({
 
   function openDetailFromElement(element: HTMLElement, seatId: string) {
     if (mode === "print") return;
+    detailTriggerRef.current = element;
     const rect = element.getBoundingClientRect();
     const bubbleWidth = Math.min(280, window.innerWidth - 24);
     const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - bubbleWidth - 12));
     const below = rect.bottom + 8;
     const top = below + 220 > window.innerHeight ? Math.max(12, rect.top - 218) : below;
     setDetail({ seatId, left, top });
+  }
+
+  function closeDetail() {
+    setDetail(null);
+    window.setTimeout(() => detailTriggerRef.current?.focus(), 0);
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -178,6 +216,7 @@ export function SeatingBoard({
     if (!sourceSeatId) return;
 
     setDetail(null);
+    detailTriggerRef.current = null;
     setDragState({ overSeatId: sourceSeatId, sourceSeatId, studentId });
     setPreviewAssignments(createDragPreviewAssignments(plan.assignments, studentId, sourceSeatId, sourceSeatId));
   }
@@ -260,17 +299,28 @@ export function SeatingBoard({
       </div>
       {detail && selectedSeat ? (
         <SeatDetailBubble
+          key={selectedSeat.id}
           seat={selectedSeat}
           student={selectedStudent}
           mode={mode}
           seatLocked={selectedSeatLocked}
           studentLocked={selectedStudentLocked}
           style={{ left: detail.left, top: detail.top }}
+          moveTargets={moveTargets}
+          moveDisabled={selectedSeatLocked || selectedStudentLocked}
+          onMoveStudent={
+            isTeacherMode && !readonly && selectedStudent && onMoveStudent
+              ? (seatId) => {
+                  onMoveStudent(selectedStudent.id, seatId);
+                  closeDetail();
+                }
+              : undefined
+          }
           onToggleSeatLock={onToggleSeatLock ? () => onToggleSeatLock(selectedSeat.id) : undefined}
           onToggleStudentLock={
             onToggleStudentLock && selectedStudent ? () => onToggleStudentLock(selectedStudent.id) : undefined
           }
-          onClose={() => setDetail(null)}
+          onClose={closeDetail}
         />
       ) : null}
     </div>
@@ -361,6 +411,7 @@ function SeatDropCell({
       style={style}
       {...listeners}
       {...dragAttributes}
+      aria-disabled={undefined}
       className={cn(
         "relative cursor-pointer rounded-[7px] border transition-colors",
         mode === "teacher" ? "min-h-[104px] p-1.5" : "min-h-[98px] p-1.5",
@@ -382,6 +433,9 @@ function SeatDropCell({
       )}
       title={mode === "teacher" ? getSeatAttributeTitle(attributes) : undefined}
       role="button"
+      aria-label={`${seat.row}-${seat.column} ${student ? student.name : empty ? "空座" : "待安排"}，查看详情`}
+      aria-haspopup="dialog"
+      aria-expanded={selected}
       tabIndex={mode === "print" ? -1 : 0}
       onClick={(event) => onOpenDetail(event.currentTarget)}
       onKeyDown={(event) => {
@@ -449,9 +503,9 @@ function SeatCardContent({
         </span>
         {mode === "teacher" && (seatLocked || studentLocked) ? (
           <MiniTextBadge
-            className={noteLegendItems[3].className}
+            className={lockedLegendItem.className}
             label={seatLocked && studentLocked ? "座位和学生已锁定" : seatLocked ? "座位已锁定" : "学生已锁定"}
-            shortLabel="锁"
+            shortLabel={lockedLegendItem.shortLabel}
           />
         ) : null}
       </div>
@@ -582,6 +636,9 @@ function SeatDetailBubble({
   seatLocked,
   studentLocked,
   style,
+  moveTargets,
+  moveDisabled,
+  onMoveStudent,
   onToggleSeatLock,
   onToggleStudentLock,
   onClose
@@ -592,20 +649,51 @@ function SeatDetailBubble({
   seatLocked: boolean;
   studentLocked: boolean;
   style: CSSProperties;
+  moveTargets: MoveTarget[];
+  moveDisabled: boolean;
+  onMoveStudent?: (seatId: string) => void;
   onToggleSeatLock?: () => void;
   onToggleStudentLock?: () => void;
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const [moveTargetId, setMoveTargetId] = useState("");
+  const [adjustedTop, setAdjustedTop] = useState(Number(style.top) || 12);
   const sensitive = shouldShowSensitive(mode);
   const visibleAttributes = seat.attributes.filter((attribute) => attribute !== "empty");
   const canToggleLocks = mode === "teacher" && (onToggleSeatLock || (student && onToggleStudentLock));
 
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const updateTop = () => {
+      const preferredTop = Number(style.top) || 12;
+      setAdjustedTop(Math.max(12, Math.min(preferredTop, window.innerHeight - dialog.offsetHeight - 12)));
+    };
+    updateTop();
+    window.addEventListener("resize", updateTop);
+    return () => window.removeEventListener("resize", updateTop);
+  }, [style.top]);
+
   return (
     <div
+      ref={dialogRef}
       className="fixed z-50 w-[280px] max-w-[calc(100vw-24px)] rounded-[8px] border border-ink/10 bg-white p-3 text-left shadow-soft no-print"
-      style={style}
+      style={{ ...style, top: adjustedTop, maxHeight: "calc(100vh - 24px)", overflowY: "auto" }}
       role="dialog"
       aria-label="座位详情"
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
@@ -617,8 +705,14 @@ function SeatDetailBubble({
             {visibleAttributes.length ? visibleAttributes.map((attribute) => seatAttributeLabels[attribute]).join("、") : "普通座位"}
           </div>
         </div>
-        <button type="button" title="关闭详情" className="rounded-[5px] p-1 text-ink/45 hover:bg-chalk" onClick={onClose}>
-          <X className="h-3.5 w-3.5" />
+        <button
+          type="button"
+          title="关闭详情"
+          aria-label="关闭详情"
+          className="rounded-[5px] p-1 text-ink/45 hover:bg-chalk"
+          onClick={onClose}
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
 
@@ -636,6 +730,39 @@ function SeatDetailBubble({
       ) : (
         <p className="text-xs leading-5 text-ink/60">当前座位尚未安排学生。</p>
       )}
+
+      {onMoveStudent ? (
+        <div className="mt-3 border-t border-ink/10 pt-2">
+          <label className="block text-[11px] font-bold text-ink/55">
+            移动到座位
+            <select
+              className="mt-1 w-full rounded-[6px] border border-ink/15 bg-white px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-fern focus:ring-2 focus:ring-fern/20 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-ink/40"
+              aria-label="移动到座位"
+              value={moveTargetId}
+              disabled={moveDisabled || moveTargets.length === 0}
+              onChange={(event) => setMoveTargetId(event.target.value)}
+            >
+              <option value="">
+                {moveDisabled ? "当前座位或学生已锁定" : moveTargets.length ? "选择目标座位" : "暂无可移动座位"}
+              </option>
+              {moveTargets.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-[6px] bg-fern px-2 py-1.5 text-xs font-bold text-white hover:bg-fern/90 disabled:cursor-not-allowed disabled:bg-ink/15"
+            disabled={moveDisabled || !moveTargetId}
+            onClick={() => onMoveStudent(moveTargetId)}
+          >
+            <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            移动学生
+          </button>
+        </div>
+      ) : null}
 
       {canToggleLocks ? (
         <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-ink/10 pt-2">

@@ -4,7 +4,12 @@ import { AlertTriangle, CheckCircle2, RefreshCw, Save, Sparkles } from "lucide-r
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { describeRotationPolicy, getRotationMatchStats, normalizeRotationPolicy } from "@/lib/rotation";
-import { getSelectedPlan, useSeatWiseStore } from "@/store/useSeatWiseStore";
+import {
+  getCompatibleHistory,
+  getSelectedPlan,
+  isPlanStale,
+  useSeatWiseStore
+} from "@/store/useSeatWiseStore";
 import { ScoreBar } from "@/components/ScoreBar";
 import { SeatingBoard } from "@/components/SeatingBoard";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
@@ -12,17 +17,26 @@ import { ViewModeToggle } from "@/components/ViewModeToggle";
 export function GeneratorPanel() {
   const state = useSeatWiseStore();
   const selectedPlan = getSelectedPlan(state);
+  const selectedPlanStale = isPlanStale(state, selectedPlan);
   const [note, setNote] = useState("");
   const rotationPolicy = normalizeRotationPolicy(state.rules.rotationPolicy);
-  const rotationStats = selectedPlan
+  const compatibleHistory = getCompatibleHistory(
+    state.history,
+    state.classroom.layout,
+    state.layoutEpoch
+  );
+  const rotationStats = selectedPlan && !selectedPlanStale && rotationPolicy.enabled
     ? getRotationMatchStats({
         assignments: selectedPlan.assignments,
-        history: state.history,
+        history: compatibleHistory,
         layout: state.classroom.layout,
-        policy: rotationPolicy
+        policy: rotationPolicy,
+        validStudentIds: new Set(state.classroom.students.map((student) => student.id))
       })
     : null;
-  const rotationMatchText = rotationStats
+  const rotationMatchText = !rotationPolicy.enabled
+    ? "未启用"
+    : rotationStats
     ? rotationStats.total
       ? `${rotationStats.matched}/${rotationStats.total}（${rotationStats.rate}%）`
       : "保存历史后生效"
@@ -78,7 +92,20 @@ export function GeneratorPanel() {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-bold text-ink">{plan.name}</span>
-                <span className="rounded-[5px] bg-ink px-1.5 py-0.5 text-xs font-bold text-white">{plan.score.total}</span>
+                <span className="flex items-center gap-1">
+                  {plan.sourceRevision !== state.inputRevision ? (
+                    <span className="rounded-[5px] bg-marigold/15 px-1.5 py-0.5 text-[10px] font-bold text-marigold">
+                      已过期
+                    </span>
+                  ) : plan.feasibility.status === "partial" ? (
+                    <span className="rounded-[5px] bg-coral/10 px-1.5 py-0.5 text-[10px] font-bold text-coral">
+                      不完整
+                    </span>
+                  ) : null}
+                  <span className="rounded-[5px] bg-ink px-1.5 py-0.5 text-xs font-bold text-white">
+                    {plan.score.total}
+                  </span>
+                </span>
               </div>
               {state.viewMode === "teacher" ? (
                 <div className="mt-2 grid gap-2 lg:grid-cols-2">
@@ -95,6 +122,26 @@ export function GeneratorPanel() {
         </div>
       ) : null}
 
+      {selectedPlanStale ? (
+        <div className="rounded-[8px] border border-marigold/30 bg-marigold/10 p-3 text-sm font-semibold text-marigold no-print" role="status">
+          名单、布局或规则已变化。当前方案仅供查看，请重新生成后再调整、保存或导出。
+        </div>
+      ) : null}
+
+      {state.generationError ? (
+        <div className="rounded-[8px] border border-coral/25 bg-coral/10 p-3 text-sm font-semibold text-coral no-print" role="alert">
+          {state.generationError}
+        </div>
+      ) : null}
+
+      {selectedPlan && !selectedPlanStale && selectedPlan.feasibility.status === "partial" ? (
+        <div className="rounded-[8px] border border-coral/25 bg-coral/10 p-3 text-sm font-semibold text-coral no-print" role="alert">
+          {selectedPlan.feasibility.unassignedStudentIds.length
+            ? `当前仅安排 ${selectedPlan.feasibility.assignedCount}/${selectedPlan.feasibility.totalStudents} 名学生，不能保存或导出。`
+            : `当前仍有 ${selectedPlan.feasibility.hardViolations.length} 条硬约束冲突，不能保存或导出。`}
+        </div>
+      ) : null}
+
       <div className="grid min-w-0 gap-3 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 rounded-[8px] border border-ink/10 bg-white p-2 shadow-sm print-surface md:p-3">
           {selectedPlan ? (
@@ -102,9 +149,10 @@ export function GeneratorPanel() {
               classroom={state.classroom}
               plan={selectedPlan}
               mode={state.viewMode}
-              onMoveStudent={state.moveStudentToSeat}
-              onToggleSeatLock={state.toggleSeatLock}
-              onToggleStudentLock={state.toggleStudentLock}
+              readonly={selectedPlanStale}
+              onMoveStudent={selectedPlanStale ? undefined : state.moveStudentToSeat}
+              onToggleSeatLock={selectedPlanStale ? undefined : state.toggleSeatLock}
+              onToggleStudentLock={selectedPlanStale ? undefined : state.toggleStudentLock}
             />
           ) : (
             <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[8px] border border-dashed border-ink/20 bg-paper text-center">
@@ -147,6 +195,11 @@ export function GeneratorPanel() {
                 <div className="rounded-[7px] bg-chalk p-2 text-xs font-bold text-fern">
                   {describeRotationPolicy(rotationPolicy)} · 目标匹配 {rotationMatchText}
                 </div>
+                {rotationPolicy.enabled && compatibleHistory.at(-1) ? (
+                  <p className="mt-2 text-xs text-ink/55">
+                    下次建议调整：{getNextRotationDate(compatibleHistory.at(-1)!.savedAt, rotationPolicy.periodDays)}
+                  </p>
+                ) : null}
               </div>
 
               <div className="rounded-[8px] border border-ink/10 bg-white p-3 shadow-sm">
@@ -199,7 +252,11 @@ export function GeneratorPanel() {
                 <button
                   type="button"
                   className="mt-2 w-full rounded-[7px] bg-marigold px-3 py-1.5 text-sm font-bold text-white hover:bg-marigold/90"
-                  disabled={!selectedPlan}
+                  disabled={
+                    !selectedPlan ||
+                    selectedPlanStale ||
+                    selectedPlan.feasibility.status !== "complete"
+                  }
                   onClick={() => {
                     state.saveSelectedPlan(note);
                     setNote("");
@@ -219,4 +276,10 @@ export function GeneratorPanel() {
       </div>
     </section>
   );
+}
+
+function getNextRotationDate(savedAt: string, periodDays: number) {
+  const next = new Date(savedAt);
+  next.setDate(next.getDate() + periodDays);
+  return next.toLocaleDateString("zh-CN");
 }

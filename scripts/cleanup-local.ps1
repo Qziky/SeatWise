@@ -1,6 +1,5 @@
-[CmdletBinding(SupportsShouldProcess = $true)]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
-  [switch]$AllPlaywrightDaemons,
   [switch]$RemoveArtifacts
 )
 
@@ -27,17 +26,15 @@ function Test-IsSeatWiseProcess {
 
   $normalizedCommand = $commandLine.ToLowerInvariant()
   $normalizedRoot = $workspaceRoot.ToLowerInvariant()
+  $workspacePathPattern = [regex]::Escape($normalizedRoot) + '(?:[\\/]|(?=["\s]|$))'
+  $isWorkspaceCommand = $normalizedCommand -match $workspacePathPattern
 
-  if ($normalizedCommand.Contains("\openai\codex\runtimes\")) {
-    return $false
-  }
-
-  if ($normalizedCommand -match "playwright-core[\\/]+lib[\\/]+entry[\\/]+clidaemon\.js" -and
-      ($AllPlaywrightDaemons -or $normalizedCommand -match "seatwise")) {
+  if ($isWorkspaceCommand -and
+      $normalizedCommand -match "playwright-core[\\/]+lib[\\/]+entry[\\/]+clidaemon\.js") {
     return $true
   }
 
-  if ($normalizedCommand.Contains($normalizedRoot) -and
+  if ($isWorkspaceCommand -and
       $normalizedCommand -match "(next[\\/]+dist[\\/]+bin[\\/]+next|eslint[\\/]+bin[\\/]+eslint|vitest[\\/]+vitest\.mjs)") {
     return $true
   }
@@ -63,7 +60,11 @@ if ($rootTargets.Count -eq 0) {
 
 if ($RemoveArtifacts -and (Test-Path -LiteralPath $playwrightArtifacts)) {
   $resolvedArtifacts = (Resolve-Path -LiteralPath $playwrightArtifacts).Path
-  if (-not $resolvedArtifacts.StartsWith($workspaceRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+  $workspacePrefix = $workspaceRoot.TrimEnd([char[]]@(
+      [System.IO.Path]::DirectorySeparatorChar,
+      [System.IO.Path]::AltDirectorySeparatorChar
+    )) + [System.IO.Path]::DirectorySeparatorChar
+  if (-not $resolvedArtifacts.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing to remove a path outside the workspace: $resolvedArtifacts"
   }
 

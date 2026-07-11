@@ -23,7 +23,7 @@ export type RelationshipRuleType = "avoid-desk" | "keep-apart";
 
 export type ViewMode = "teacher" | "student" | "print";
 
-export type ExportFormat = "pdf" | "image" | "excel";
+export type ExportFormat = "pdf" | "image" | "csv";
 
 export type RotationPattern = "vertical" | "horizontal" | "diagonal" | "serpentine";
 
@@ -48,7 +48,6 @@ export interface RotationPolicy {
   stepRows: number;
   stepColumns: number;
   strictness: RotationStrictness;
-  skipEmptySeats: boolean;
 }
 
 export interface Student {
@@ -62,6 +61,10 @@ export interface Student {
   remark: string;
   specialNeeds: string;
 }
+
+export type StudentDraft = Omit<Student, "id">;
+
+export type StudentLabel = Pick<Student, "id" | "name" | "studentNo" | "gender">;
 
 export interface SeatCell {
   id: string;
@@ -118,6 +121,14 @@ export interface PlanScore {
   balance: number;
 }
 
+export interface PlanFeasibility {
+  status: "complete" | "partial";
+  assignedCount: number;
+  totalStudents: number;
+  unassignedStudentIds: string[];
+  hardViolations: string[];
+}
+
 export interface SeatingPlan {
   id: string;
   name: string;
@@ -129,6 +140,9 @@ export interface SeatingPlan {
   reviewTips: string[];
   lockedSeatIds: string[];
   lockedStudentIds: string[];
+  sourceRevision: number;
+  generationSeed: number;
+  feasibility: PlanFeasibility;
 }
 
 export interface HistoryEntry {
@@ -138,12 +152,28 @@ export interface HistoryEntry {
   plan: SeatingPlan;
   rules: SeatingRuleConfig;
   adjustmentNote: string;
+  layoutSnapshot: ClassroomLayout;
+  layoutSignature: string;
+  layoutEpoch?: number;
+  studentLabels: Record<string, StudentLabel>;
+  legacySnapshot?: boolean;
 }
 
 export interface ParsedStudentImport {
-  rows: Student[];
+  rows: StudentDraft[];
   rejected: string[];
   detectedHeaders: string[];
+}
+
+export interface StudentImportConflict {
+  studentNo: string;
+  name: string;
+  reason: "duplicate-student-no";
+}
+
+export interface ImportStudentsResult {
+  importedCount: number;
+  conflicts: StudentImportConflict[];
 }
 
 export interface VisibleStudent {
