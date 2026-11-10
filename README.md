@@ -33,7 +33,9 @@ SeatWise 是一个面向中国中小学班主任的智能排座位助手 MVP。�
 
 `package.json` 中保留了 `private: true`，用于避免把这个应用误发布到 npm；这不影响将仓库作为开源项目发布。
 
-Next.js 15.5.20 仍固定依赖 PostCSS 8.4.31；项目仅对 Next 子依赖覆盖到 PostCSS 8.5.16，以修复 `GHSA-qx2v-qp2m-jg93`。升级 Next 后应重新审计并优先移除此覆盖。
+Next.js 15.5.29 仍固定依赖 PostCSS 8.4.31；项目仅对 Next 子依赖覆盖到 PostCSS 8.5.23，以修复已披露的源映射文件读取漏洞。升级 Next 后应重新审计并优先移除此覆盖。
+
+开发工具的 `@typescript-eslint/typescript-estree` 仍依赖受 `GHSA-g3hv-75wg-m249` 影响的 minimatch 10；项目仅将该子依赖覆盖到 11.0.1。此版本支持项目要求的 Node.js 22/24；升级 TypeScript ESLint 后应重新审计并优先移除此覆盖。
 
 ## 本地运行
 
